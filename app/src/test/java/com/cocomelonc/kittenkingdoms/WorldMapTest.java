@@ -69,8 +69,47 @@ public final class WorldMapTest {
         map.revealAround(centerRow, centerCol);
         assertTrue(map.isExplored(centerRow, centerCol));
         assertTrue(map.isExplored(centerRow + 3, centerCol));
-        assertFalse(map.isExplored(centerRow + 4, centerCol));
-        assertFalse(map.isExplored(centerRow, centerCol + 6));
+        assertTrue(map.isExplored(centerRow + 6, centerCol));
+        assertFalse(map.isExplored(centerRow + 7, centerCol));
+    }
+
+    @Test
+    public void openingMeadowShowsEveryTerrainNeededByTheGame() {
+        WorldMap map = new WorldMap();
+        map.revealAround(WorldMap.START_ROW, WorldMap.START_COL);
+        boolean[] visible = new boolean[TerrainType.COUNT];
+        for (int row = 0; row < WorldMap.SIZE; row++) {
+            for (int col = 0; col < WorldMap.SIZE; col++) {
+                if (map.isExplored(row, col)) {
+                    visible[map.terrainAt(row, col)] = true;
+                }
+            }
+        }
+        for (int terrain = 0; terrain < TerrainType.COUNT; terrain++) {
+            assertTrue("Opening meadow is missing terrain id " + terrain, visible[terrain]);
+        }
+    }
+
+    @Test
+    public void waterHasNoIsolatedOrDiagonalOnlyTiles() {
+        WorldMap map = new WorldMap();
+        for (int row = 1; row < WorldMap.SIZE - 1; row++) {
+            for (int col = 1; col < WorldMap.SIZE - 1; col++) {
+                if (map.terrainAt(row, col) != TerrainType.WATER) {
+                    continue;
+                }
+                int neighbors = 0;
+                for (int dr = -1; dr <= 1; dr++) {
+                    for (int dc = -1; dc <= 1; dc++) {
+                        if ((dr != 0 || dc != 0)
+                                && map.terrainAt(row + dr, col + dc) == TerrainType.WATER) {
+                            neighbors++;
+                        }
+                    }
+                }
+                assertTrue("Water spike at " + row + "," + col, neighbors >= 3);
+            }
+        }
     }
 
     @Test

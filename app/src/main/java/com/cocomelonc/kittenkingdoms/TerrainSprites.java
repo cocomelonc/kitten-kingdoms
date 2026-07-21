@@ -16,21 +16,26 @@ import android.graphics.BitmapFactory;
  * license text.
  */
 final class TerrainSprites {
-    private static final int EDGE_N = 0;
-    private static final int EDGE_S = 1;
-    private static final int EDGE_E = 2;
-    private static final int EDGE_W = 3;
-    private static final int EDGE_NE = 4;
-    private static final int EDGE_NW = 5;
-    private static final int EDGE_SE = 6;
-    private static final int EDGE_SW = 7;
-    private static final int INNER_NE = 0;
-    private static final int INNER_NW = 1;
-    private static final int INNER_SE = 2;
-    private static final int INNER_SW = 3;
+    /**
+     * Kept as CC0 source-art references for contributors who want to export another tileset.
+     * The runtime renderer uses the composable shoreline so all 256 neighbor masks are valid.
+     */
+    @SuppressWarnings("unused")
+    private static final int[] CC0_SHORE_SOURCE_ASSETS = {
+            R.drawable.water_edge_n,
+            R.drawable.water_edge_s,
+            R.drawable.water_edge_e,
+            R.drawable.water_edge_w,
+            R.drawable.water_edge_ne,
+            R.drawable.water_edge_nw,
+            R.drawable.water_edge_se,
+            R.drawable.water_edge_sw,
+            R.drawable.water_inner_ne,
+            R.drawable.water_inner_nw,
+            R.drawable.water_inner_se,
+            R.drawable.water_inner_sw,
+    };
 
-    private final Bitmap[] waterEdge;
-    private final Bitmap[] waterInner;
     private final Bitmap waterPlain;
     private final Bitmap waterLily;
     private final Bitmap[] forestProps;
@@ -41,22 +46,6 @@ final class TerrainSprites {
     final Bitmap crystalMineBadge;
 
     TerrainSprites(Resources resources) {
-        waterEdge = new Bitmap[]{
-                decode(resources, R.drawable.water_edge_n),
-                decode(resources, R.drawable.water_edge_s),
-                decode(resources, R.drawable.water_edge_e),
-                decode(resources, R.drawable.water_edge_w),
-                decode(resources, R.drawable.water_edge_ne),
-                decode(resources, R.drawable.water_edge_nw),
-                decode(resources, R.drawable.water_edge_se),
-                decode(resources, R.drawable.water_edge_sw),
-        };
-        waterInner = new Bitmap[]{
-                decode(resources, R.drawable.water_inner_ne),
-                decode(resources, R.drawable.water_inner_nw),
-                decode(resources, R.drawable.water_inner_se),
-                decode(resources, R.drawable.water_inner_sw),
-        };
         waterPlain = decode(resources, R.drawable.water_plain);
         waterLily = decode(resources, R.drawable.water_lily);
         forestProps = new Bitmap[]{
@@ -83,69 +72,9 @@ final class TerrainSprites {
         return BitmapFactory.decodeResource(resources, resId);
     }
 
-    /**
-     * The shoreline bitmap for a water tile, or {@code null} if a non-grass, non-water neighbor
-     * makes autotiling ambiguous (the caller should keep its plain color fill in that case).
-     * Mirrors crystal-trail's {@code tools/kenney.py} {@code _water_tile()} 3x3-blob selection.
-     */
-    Bitmap waterBitmapFor(WorldMap map, int row, int col) {
-        boolean grassN = isGrassLike(map, row - 1, col);
-        boolean grassS = isGrassLike(map, row + 1, col);
-        boolean grassW = isGrassLike(map, row, col - 1);
-        boolean grassE = isGrassLike(map, row, col + 1);
-        if (ambiguous(map, row - 1, col) || ambiguous(map, row + 1, col)
-                || ambiguous(map, row, col - 1) || ambiguous(map, row, col + 1)) {
-            return null;
-        }
-        if (grassN && grassW) {
-            return waterEdge[EDGE_NW];
-        }
-        if (grassN && grassE) {
-            return waterEdge[EDGE_NE];
-        }
-        if (grassS && grassW) {
-            return waterEdge[EDGE_SW];
-        }
-        if (grassS && grassE) {
-            return waterEdge[EDGE_SE];
-        }
-        if (grassN) {
-            return waterEdge[EDGE_N];
-        }
-        if (grassS) {
-            return waterEdge[EDGE_S];
-        }
-        if (grassW) {
-            return waterEdge[EDGE_W];
-        }
-        if (grassE) {
-            return waterEdge[EDGE_E];
-        }
-        if (isGrassLike(map, row - 1, col - 1)) {
-            return waterInner[INNER_NW];
-        }
-        if (isGrassLike(map, row - 1, col + 1)) {
-            return waterInner[INNER_NE];
-        }
-        if (isGrassLike(map, row + 1, col - 1)) {
-            return waterInner[INNER_SW];
-        }
-        if (isGrassLike(map, row + 1, col + 1)) {
-            return waterInner[INNER_SE];
-        }
+    /** The seamless CC0 water surface; shore geometry is composed for every neighbor mask. */
+    Bitmap waterBase() {
         return waterPlain;
-    }
-
-    private boolean ambiguous(WorldMap map, int row, int col) {
-        if (!map.inBounds(row, col)) {
-            return false;
-        }
-        int terrainId = map.terrainAt(row, col);
-        return terrainId != TerrainType.GRASS && terrainId != TerrainType.WATER;
-    }
-
-    private boolean isGrassLike(WorldMap map, int row, int col) {
-        return !map.inBounds(row, col) || map.terrainAt(row, col) == TerrainType.GRASS;
     }
 
     /** A decoration prop for a non-water tile, or {@code null} for a bare tile this time. */

@@ -76,7 +76,7 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     private static final float MENU_TOP = 226f;
     private static final float NOTIFICATION_DURATION = 2.4f;
     private static final int WILDLIFE_PER_SPECIES = 2;
-    private static final int WILDLIFE_SPAWN_RADIUS = 25;
+    private static final int WILDLIFE_VISIBLE_RADIUS = 6;
     private static final String PREFS = "kitten_kingdoms_progress";
     private static final String PREF_LANGUAGE = "language";
     private static final String SAVE_FILE_NAME = "kingdom.sav";
@@ -96,6 +96,7 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     private final List<Particle> particles = new ArrayList<>();
     private final List<WildlifeCritter> wildlifeCritters = new ArrayList<>();
     private final Random random = new Random(0xA17E5501L);
+    private final Random wildlifeRandom = new Random(0xC0C04A11L);
     private final File saveFile;
     private final ScaleGestureDetector scaleGestureDetector;
 
@@ -366,7 +367,7 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
             }
             canvas.save();
             canvas.translate(critter.worldX, critter.worldY);
-            canvas.scale(0.3f, 0.3f);
+            canvas.scale(0.95f, 0.95f);
             drawWildlifeCritter(canvas, critter, time);
             canvas.restore();
         }
@@ -407,10 +408,11 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         }
 
         if (terrainId == TerrainType.WATER) {
-            Bitmap waterBitmap = sprites.waterBitmapFor(map, row, col);
+            Bitmap waterBitmap = sprites.waterBase();
             if (waterBitmap != null) {
                 canvas.drawBitmap(waterBitmap, left, top, spritePaint);
             }
+            drawShoreline(canvas, map, row, col, left, top, waterBitmap);
             Bitmap lily = sprites.waterLilyFor(seedValue);
             if (lily != null) {
                 float lilySize = TILE * 0.5f;
@@ -426,6 +428,110 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
                         spritePaint);
             }
         }
+    }
+
+    /**
+     * Composes every shoreline edge independently. Unlike the previous one-sprite priority
+     * chain, this handles opposite banks, three-sided tips, and diagonal inner corners without
+     * ever choosing a shoreline with the wrong angle.
+     */
+    private void drawShoreline(Canvas canvas, WorldMap map, int row, int col,
+            float left, float top, Bitmap waterBitmap) {
+        boolean north = isLand(map, row - 1, col);
+        boolean south = isLand(map, row + 1, col);
+        boolean west = isLand(map, row, col - 1);
+        boolean east = isLand(map, row, col + 1);
+        final float sandWidth = 12f;
+        final float grassWidth = 4.5f;
+
+        paint.setColor(0xFFE8D59D);
+        if (north) {
+            canvas.drawRect(left, top, left + TILE, top + sandWidth, paint);
+        }
+        if (south) {
+            canvas.drawRect(left, top + TILE - sandWidth, left + TILE, top + TILE, paint);
+        }
+        if (west) {
+            canvas.drawRect(left, top, left + sandWidth, top + TILE, paint);
+        }
+        if (east) {
+            canvas.drawRect(left + TILE - sandWidth, top, left + TILE, top + TILE, paint);
+        }
+
+        paint.setColor(terrainTypes[TerrainType.GRASS].color);
+        if (north) {
+            canvas.drawRect(left, top, left + TILE, top + grassWidth, paint);
+        }
+        if (south) {
+            canvas.drawRect(left, top + TILE - grassWidth, left + TILE, top + TILE, paint);
+        }
+        if (west) {
+            canvas.drawRect(left, top, left + grassWidth, top + TILE, paint);
+        }
+        if (east) {
+            canvas.drawRect(left + TILE - grassWidth, top, left + TILE, top + TILE, paint);
+        }
+
+        if (north && west) {
+            roundOuterShore(canvas, left, top, 0f, waterBitmap);
+        }
+        if (north && east) {
+            roundOuterShore(canvas, left, top, 90f, waterBitmap);
+        }
+        if (south && east) {
+            roundOuterShore(canvas, left, top, 180f, waterBitmap);
+        }
+        if (south && west) {
+            roundOuterShore(canvas, left, top, 270f, waterBitmap);
+        }
+
+        if (!north && !west && isLand(map, row - 1, col - 1)) {
+            drawInnerShore(canvas, left, top, 0f);
+        }
+        if (!north && !east && isLand(map, row - 1, col + 1)) {
+            drawInnerShore(canvas, left, top, 90f);
+        }
+        if (!south && !east && isLand(map, row + 1, col + 1)) {
+            drawInnerShore(canvas, left, top, 180f);
+        }
+        if (!south && !west && isLand(map, row + 1, col - 1)) {
+            drawInnerShore(canvas, left, top, 270f);
+        }
+    }
+
+    private boolean isLand(WorldMap map, int row, int col) {
+        return !map.inBounds(row, col) || map.terrainAt(row, col) != TerrainType.WATER;
+    }
+
+    /** Rounds the water-facing inside bend of two adjacent shore strips. */
+    private void roundOuterShore(Canvas canvas, float left, float top, float rotation,
+            Bitmap waterBitmap) {
+        canvas.save();
+        canvas.translate(left, top);
+        canvas.rotate(rotation, TILE / 2f, TILE / 2f);
+        paint.setColor(0xFFE8D59D);
+        canvas.drawCircle(12f, 12f, 10f, paint);
+        if (waterBitmap != null) {
+            canvas.save();
+            path.reset();
+            path.addCircle(13f, 13f, 6.2f, Path.Direction.CW);
+            canvas.clipPath(path);
+            canvas.drawBitmap(waterBitmap, 0f, 0f, spritePaint);
+            canvas.restore();
+        }
+        canvas.restore();
+    }
+
+    /** Draws a small rounded land corner when only the diagonal neighbor is land. */
+    private void drawInnerShore(Canvas canvas, float left, float top, float rotation) {
+        canvas.save();
+        canvas.translate(left, top);
+        canvas.rotate(rotation, TILE / 2f, TILE / 2f);
+        paint.setColor(0xFFE8D59D);
+        canvas.drawCircle(0f, 0f, 13f, paint);
+        paint.setColor(terrainTypes[TerrainType.GRASS].color);
+        canvas.drawCircle(0f, 0f, 5.2f, paint);
+        canvas.restore();
     }
 
     private void drawBuildingToken(Canvas canvas, int typeId, float cx, float cy, boolean underConstruction, float time) {
@@ -948,6 +1054,7 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
 
     private void spawnWildlife() {
         wildlifeCritters.clear();
+        wildlifeRandom.setSeed(0xC0C04A11L);
         WorldMap map = world.getMap();
         spawnCritterGroup(map, WildlifeCritter.RABBIT, false);
         spawnCritterGroup(map, WildlifeCritter.HEDGEHOG, false);
@@ -958,7 +1065,7 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     private void spawnCritterGroup(WorldMap map, int species, boolean requiresWater) {
         for (int i = 0; i < WILDLIFE_PER_SPECIES; i++) {
             int[] cell = findNearbyCell(map, WorldMap.START_ROW, WorldMap.START_COL,
-                    WILDLIFE_SPAWN_RADIUS, requiresWater);
+                    WILDLIFE_VISIBLE_RADIUS, requiresWater, true, true);
             if (cell == null) {
                 continue;
             }
@@ -967,26 +1074,44 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
             critter.worldY = cell[0] * TILE + TILE / 2f;
             critter.targetX = critter.worldX;
             critter.targetY = critter.worldY;
-            critter.speed = 18f + random.nextFloat() * 10f;
+            critter.speed = 16f + wildlifeRandom.nextFloat() * 8f;
+            critter.retargetIn = 1.5f + wildlifeRandom.nextFloat() * 2f;
             wildlifeCritters.add(critter);
         }
     }
 
-    private int[] findNearbyCell(WorldMap map, int anchorRow, int anchorCol, int radius, boolean requiresWater) {
-        for (int attempt = 0; attempt < 40; attempt++) {
-            int row = anchorRow + random.nextInt(radius * 2 + 1) - radius;
-            int col = anchorCol + random.nextInt(radius * 2 + 1) - radius;
-            if (!map.inBounds(row, col)) {
-                continue;
-            }
-            boolean suitable = requiresWater
-                    ? map.terrainAt(row, col) == TerrainType.WATER
-                    : map.isWalkable(row, col);
-            if (suitable) {
-                return new int[]{row, col};
+    private int[] findNearbyCell(WorldMap map, int anchorRow, int anchorCol, int radius,
+            boolean requiresWater, boolean exploredOnly, boolean avoidCritters) {
+        List<int[]> candidates = new ArrayList<>();
+        for (int row = anchorRow - radius; row <= anchorRow + radius; row++) {
+            for (int col = anchorCol - radius; col <= anchorCol + radius; col++) {
+                int dr = row - anchorRow;
+                int dc = col - anchorCol;
+                if (!map.inBounds(row, col) || dr * dr + dc * dc > radius * radius
+                        || (exploredOnly && !map.isExplored(row, col))) {
+                    continue;
+                }
+                boolean suitable = requiresWater
+                        ? map.terrainAt(row, col) == TerrainType.WATER
+                        : map.isWalkable(row, col);
+                if (suitable && (!avoidCritters || isWildlifeCellFree(row, col))) {
+                    candidates.add(new int[]{row, col});
+                }
             }
         }
-        return null;
+        return candidates.isEmpty() ? null
+                : candidates.get(wildlifeRandom.nextInt(candidates.size()));
+    }
+
+    private boolean isWildlifeCellFree(int row, int col) {
+        for (WildlifeCritter critter : wildlifeCritters) {
+            float critterRow = critter.worldY / TILE;
+            float critterCol = critter.worldX / TILE;
+            if (Math.hypot(row + 0.5f - critterRow, col + 0.5f - critterCol) < 1.4f) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void updateWildlife(float dt) {
@@ -1018,14 +1143,15 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         int currentRow = (int) (critter.worldY / TILE);
         int currentCol = (int) (critter.worldX / TILE);
         boolean requiresWater = critter.species == WildlifeCritter.DUCKLING;
-        int[] cell = findNearbyCell(map, currentRow, currentCol, 3, requiresWater);
+        int[] cell = findNearbyCell(map, currentRow, currentCol, 3,
+                requiresWater, true, false);
         if (cell == null) {
             critter.retargetIn = 1f;
             return;
         }
         critter.targetX = cell[1] * TILE + TILE / 2f;
         critter.targetY = cell[0] * TILE + TILE / 2f;
-        critter.retargetIn = 3f + random.nextFloat() * 3f;
+        critter.retargetIn = 3f + wildlifeRandom.nextFloat() * 3f;
     }
 
     private void drawWildlifeCritter(Canvas canvas, WildlifeCritter critter, float time) {
@@ -1034,67 +1160,91 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         float bounceFreq = critter.species == WildlifeCritter.BEE ? 10f : 7f;
         float bounce = (float) Math.sin(time * bounceFreq + critter.worldX * 0.05f) * 1.6f;
         canvas.translate(0f, bounce);
+        paint.setColor(0x24433B31);
+        canvas.drawOval(-17f, 11f, 17f, 17f, paint);
         switch (critter.species) {
             case WildlifeCritter.HEDGEHOG:
-                paint.setColor(0x264A4234);
-                canvas.drawOval(-14f, 10f, 14f, 16f, paint);
-                paint.setColor(0xFF8B7355);
-                canvas.drawOval(-14f, -8f, 14f, 10f, paint);
-                paint.setColor(0xFFF0DCC0);
-                canvas.drawOval(6f, -6f, 16f, 6f, paint);
-                paint.setColor(0xFF6B5842);
-                for (int i = 0; i < 4; i++) {
-                    float spikeX = -12f + i * 7f;
+                paint.setColor(0xFF9A7654);
+                canvas.drawOval(-17f, -9f, 14f, 12f, paint);
+                paint.setColor(0xFF6F5845);
+                for (int i = 0; i < 5; i++) {
+                    float spikeX = -15f + i * 6.5f;
                     path.reset();
                     path.moveTo(spikeX, -6f);
-                    path.lineTo(spikeX + 3f, -14f);
-                    path.lineTo(spikeX + 6f, -6f);
+                    path.lineTo(spikeX + 3.2f, -16f - (i % 2) * 2f);
+                    path.lineTo(spikeX + 6.4f, -6f);
                     path.close();
                     canvas.drawPath(path, paint);
                 }
+                paint.setColor(0xFFF3DFC1);
+                canvas.drawOval(4f, -7f, 18f, 8f, paint);
                 paint.setColor(0xFF5E5872);
-                canvas.drawCircle(12f, -2f, 1.6f, paint);
+                canvas.drawCircle(12f, -3f, 1.8f, paint);
+                paint.setColor(0xFF4A4038);
+                canvas.drawCircle(18f, 1f, 2.3f, paint);
+                paint.setColor(0xFFF0A9A8);
+                canvas.drawCircle(12f, 2f, 2.1f, paint);
                 break;
             case WildlifeCritter.RABBIT:
-                paint.setColor(0x264A4234);
-                canvas.drawOval(-12f, 12f, 12f, 17f, paint);
                 paint.setColor(0xFFECE6DC);
-                canvas.drawOval(-12f, -4f, 12f, 14f, paint);
-                canvas.drawCircle(0f, -10f, 9f, paint);
-                canvas.drawOval(-7f, -26f, -2f, -8f, paint);
-                canvas.drawOval(2f, -26f, 7f, -8f, paint);
+                canvas.drawOval(-14f, -3f, 13f, 15f, paint);
+                canvas.drawCircle(2f, -11f, 10f, paint);
+                canvas.drawOval(-6f, -30f, 0f, -9f, paint);
+                canvas.drawOval(5f, -30f, 11f, -9f, paint);
+                paint.setColor(0xFFF7F4EE);
+                canvas.drawCircle(-13f, 1f, 6f, paint);
                 paint.setColor(0xFFEBAFC0);
-                canvas.drawOval(-6f, -25f, -3f, -12f, paint);
-                canvas.drawOval(3f, -25f, 6f, -12f, paint);
+                canvas.drawOval(-4.5f, -28f, -1.5f, -13f, paint);
+                canvas.drawOval(6.5f, -28f, 9.5f, -13f, paint);
+                canvas.drawCircle(-3f, -6f, 2.2f, paint);
                 paint.setColor(0xFF5E5872);
-                canvas.drawCircle(-3f, -10f, 1.6f, paint);
-                canvas.drawCircle(4f, -10f, 1.6f, paint);
+                canvas.drawCircle(-1f, -12f, 1.8f, paint);
+                canvas.drawCircle(6f, -12f, 1.8f, paint);
+                paint.setColor(Color.WHITE);
+                canvas.drawCircle(-0.5f, -12.6f, 0.65f, paint);
+                canvas.drawCircle(6.5f, -12.6f, 0.65f, paint);
+                paint.setColor(0xFFCF8399);
+                canvas.drawCircle(2.5f, -8f, 1.8f, paint);
                 break;
             case WildlifeCritter.DUCKLING:
-                paint.setColor(0x264A4234);
-                canvas.drawOval(-12f, 10f, 12f, 15f, paint);
                 paint.setColor(0xFFF3CB4F);
-                canvas.drawOval(-12f, -4f, 12f, 12f, paint);
-                canvas.drawCircle(8f, -10f, 7f, paint);
+                canvas.drawOval(-15f, -5f, 13f, 13f, paint);
+                canvas.drawCircle(9f, -11f, 9f, paint);
+                paint.setColor(0xFFE8B942);
+                canvas.drawOval(-8f, -2f, 7f, 8f, paint);
                 paint.setColor(0xFFE08A3C);
                 path.reset();
-                path.moveTo(13f, -10f);
-                path.lineTo(20f, -8f);
-                path.lineTo(13f, -6f);
+                path.moveTo(16f, -11f);
+                path.lineTo(24f, -8f);
+                path.lineTo(16f, -5f);
                 path.close();
                 canvas.drawPath(path, paint);
                 paint.setColor(0xFF5E5872);
-                canvas.drawCircle(9f, -12f, 1.4f, paint);
+                canvas.drawCircle(10f, -13f, 1.7f, paint);
+                paint.setColor(Color.WHITE);
+                canvas.drawCircle(10.5f, -13.5f, 0.6f, paint);
+                paint.setColor(0xFFF0A58D);
+                canvas.drawCircle(12f, -8f, 1.8f, paint);
                 break;
             case WildlifeCritter.BEE:
-                paint.setColor(0x99FFFFFF);
-                canvas.drawOval(-6f, -14f, 0f, -4f, paint);
-                canvas.drawOval(0f, -14f, 6f, -4f, paint);
+                paint.setColor(0xCFFFFFFF);
+                canvas.drawOval(-11f, -17f, -1f, -3f, paint);
+                canvas.drawOval(1f, -17f, 11f, -3f, paint);
                 paint.setColor(0xFFF3C74A);
-                canvas.drawOval(-8f, -6f, 8f, 6f, paint);
+                canvas.drawOval(-11f, -7f, 11f, 8f, paint);
                 paint.setColor(0xFF443C2E);
-                canvas.drawRect(-3f, -6f, -1f, 6f, paint);
-                canvas.drawRect(1f, -6f, 3f, 6f, paint);
+                canvas.drawRect(-4f, -6f, -1f, 7f, paint);
+                canvas.drawRect(3f, -5f, 6f, 6f, paint);
+                canvas.drawCircle(-4f, -2f, 1.4f, paint);
+                canvas.drawCircle(5f, -2f, 1.4f, paint);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(1.5f);
+                canvas.drawLine(-5f, -7f, -8f, -12f, paint);
+                canvas.drawLine(5f, -7f, 8f, -12f, paint);
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(0xFFF1A6A4);
+                canvas.drawCircle(-7f, 2f, 1.8f, paint);
+                canvas.drawCircle(7f, 2f, 1.8f, paint);
                 break;
             default:
                 break;
