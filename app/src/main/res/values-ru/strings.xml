@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Королевство котят</string>
+    <string name="game_title">Королевство котят</string>
+    <string name="game_subtitle">Маленькое королевство растёт ход за ходом</string>
+    <string name="touch_to_begin">Коснись, чтобы начать</string>
+    <string name="continue_kingdom">Продолжить королевство</string>
+    <string name="tap_to_explore">Коснись клетки, чтобы идти, или веди пальцем и сжимай для масштаба</string>
+    <string name="build_hint">Открой «Строить», чтобы возвести здание на открытой земле</string>
+    <string name="paused">Маленькая пауза</string>
+    <string name="touch_to_continue">Коснись, чтобы продолжить</string>
+    <string name="end_turn">Завершить ход</string>
+    <string name="turn_label">Ход</string>
+    <string name="population_label">Котята</string>
+    <string name="build_menu_title">Строить</string>
+    <string name="tech_tree_title">Исследования</string>
+    <string name="tech_points_label">Очки науки</string>
+    <string name="cancel">Отмена</string>
+
+    <string name="resource_fish">Рыба</string>
+    <string name="resource_wood">Дерево</string>
+    <string name="resource_stone">Камень</string>
+    <string name="resource_catnip">Кошачья мята</string>
+    <string name="resource_yarn">Пряжа</string>
+
+    <string name="building_town_hall">Ратуша</string>
+    <string name="building_fishing_dock">Рыбацкий причал</string>
+    <string name="building_lumber_camp">Лесопилка</string>
+    <string name="building_quarry">Каменоломня</string>
+    <string name="building_catnip_farm">Ферма мяты</string>
+    <string name="building_weavers_cottage">Дом ткачихи</string>
+    <string name="building_kitten_cottage">Котячий домик</string>
+    <string name="building_storage_barn">Амбар</string>
+    <string name="building_scholars_den">Кабинет учёного</string>
+    <string name="building_cozy_plaza">Уютная площадь</string>
+
+    <string name="tech_basic_tools">Простые инструменты</string>
+    <string name="tech_fishing_nets">Рыболовные сети</string>
+    <string name="tech_textile_craft">Ткацкое ремесло</string>
+    <string name="tech_stone_masonry">Каменное дело</string>
+    <string name="tech_efficient_farming">Умелое земледелие</string>
+    <string name="tech_curious_minds">Любопытные умы</string>
+    <string name="tech_warm_bedding">Тёплые подстилки</string>
+    <string name="tech_community_spirit">Дух общины</string>
+    <string name="tech_kingdom_charter">Хартия королевства</string>
+
+    <string name="accessibility_game">Королевство котят. Веди пальцем, чтобы двигать карту, сжимай для масштаба, касайся, чтобы идти или разместить выбранное здание.</string>
+    <string name="accessibility_building_placed">Здание построено</string>
+    <string name="accessibility_tech_unlocked">Технология открыта</string>
+    <string name="accessibility_turn_ended">Ход завершён</string>
+</resources>

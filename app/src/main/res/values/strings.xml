@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Kitten Kingdoms</string>
+    <string name="game_title">Kitten Kingdoms</string>
+    <string name="game_subtitle">A tiny kingdom grows one gentle turn at a time</string>
+    <string name="touch_to_begin">Touch to begin</string>
+    <string name="continue_kingdom">Continue your kingdom</string>
+    <string name="tap_to_explore">Tap a tile to walk, or drag and pinch to look around</string>
+    <string name="build_hint">Open Build to place a building on discovered land</string>
+    <string name="paused">A tiny pause</string>
+    <string name="touch_to_continue">Touch to continue</string>
+    <string name="end_turn">End Turn</string>
+    <string name="turn_label">Turn</string>
+    <string name="population_label">Kittens</string>
+    <string name="build_menu_title">Build</string>
+    <string name="tech_tree_title">Research</string>
+    <string name="tech_points_label">Tech points</string>
+    <string name="cancel">Cancel</string>
+
+    <string name="resource_fish">Fish</string>
+    <string name="resource_wood">Wood</string>
+    <string name="resource_stone">Stone</string>
+    <string name="resource_catnip">Catnip</string>
+    <string name="resource_yarn">Yarn</string>
+
+    <string name="building_town_hall">Town Hall</string>
+    <string name="building_fishing_dock">Fishing Dock</string>
+    <string name="building_lumber_camp">Lumber Camp</string>
+    <string name="building_quarry">Quarry</string>
+    <string name="building_catnip_farm">Catnip Farm</string>
+    <string name="building_weavers_cottage">Weaver\'s Cottage</string>
+    <string name="building_kitten_cottage">Kitten Cottage</string>
+    <string name="building_storage_barn">Storage Barn</string>
+    <string name="building_scholars_den">Scholar\'s Den</string>
+    <string name="building_cozy_plaza">Cozy Plaza</string>
+
+    <string name="tech_basic_tools">Basic Tools</string>
+    <string name="tech_fishing_nets">Fishing Nets</string>
+    <string name="tech_textile_craft">Textile Craft</string>
+    <string name="tech_stone_masonry">Stone Masonry</string>
+    <string name="tech_efficient_farming">Efficient Farming</string>
+    <string name="tech_curious_minds">Curious Minds</string>
+    <string name="tech_warm_bedding">Warm Bedding</string>
+    <string name="tech_community_spirit">Community Spirit</string>
+    <string name="tech_kingdom_charter">Kingdom Charter</string>
+
+    <string name="accessibility_game">Kitten Kingdoms. Drag to pan the map, pinch to zoom, tap to walk or to place a selected building.</string>
+    <string name="accessibility_building_placed">Building placed</string>
+    <string name="accessibility_tech_unlocked">Technology unlocked</string>
+    <string name="accessibility_turn_ended">Turn ended</string>
+</resources>
