@@ -29,6 +29,10 @@ final class KingdomWorld {
     static final int PLACEMENT_REJECTED_TECH = 2;
     static final int PLACEMENT_REJECTED_TERRAIN = 3;
     static final int PLACEMENT_REJECTED_COST = 4;
+    static final int DIRECTION_DOWN = 0;
+    static final int DIRECTION_LEFT = 1;
+    static final int DIRECTION_RIGHT = 2;
+    static final int DIRECTION_UP = 3;
 
     interface Listener {
         void onTurnResolved(int[] resourceDeltas);
@@ -38,9 +42,11 @@ final class KingdomWorld {
         void onTechUnlocked(int techId);
 
         void onPopulationGrew(int newPopulation);
+
+        void onDiplomacyEvent(int settlementId, int eventMask);
     }
 
-    private static final float MOVE_SPEED = 6.4f;
+    private static final float MOVE_SPEED = 4.2f;
     private static final int STARTING_WOOD = 35;
     private static final int STARTING_STONE = 25;
     private static final int STARTING_POPULATION = 2;
@@ -50,6 +56,7 @@ final class KingdomWorld {
     private final Listener listener;
     private final BuildingType[] buildingTypes;
     private final TechNode[] techNodes;
+    private final DiplomacySystem diplomacy = new DiplomacySystem();
     private final List<PlacedBuilding> buildings = new ArrayList<>();
     private final int[] resources = new int[ResourceType.COUNT];
     private final boolean[] techUnlocked = new boolean[TechNode.COUNT];
@@ -66,7 +73,7 @@ final class KingdomWorld {
     private int col;
     private float visualRow;
     private float visualCol;
-    private float facing = 1f;
+    private int facingDirection = DIRECTION_DOWN;
 
     KingdomWorld(Listener listener) {
         this.listener = listener;
@@ -119,9 +126,10 @@ final class KingdomWorld {
         col = WorldMap.START_COL;
         visualRow = row;
         visualCol = col;
-        facing = 1f;
+        facingDirection = DIRECTION_DOWN;
         path.clear();
         pendingBuildingTypeId = BuildingType.NONE;
+        diplomacy.reset();
         buildings.add(new PlacedBuilding(BuildingType.TOWN_HALL, row, col, 0));
         map.markOccupied(row, col);
         map.revealAround(row, col);
@@ -287,8 +295,10 @@ final class KingdomWorld {
             float deltaRow = nextRow - visualRow;
             float deltaCol = nextCol - visualCol;
             float distance = (float) Math.hypot(deltaRow, deltaCol);
-            if (deltaCol != 0f) {
-                facing = Math.signum(deltaCol);
+            if (Math.abs(deltaCol) > Math.abs(deltaRow)) {
+                facingDirection = deltaCol < 0f ? DIRECTION_LEFT : DIRECTION_RIGHT;
+            } else if (deltaRow != 0f) {
+                facingDirection = deltaRow < 0f ? DIRECTION_UP : DIRECTION_DOWN;
             }
             if (distance <= remaining + 0.0001f) {
                 visualRow = nextRow;
@@ -366,6 +376,18 @@ final class KingdomWorld {
             }
         }
 
+        DiplomacySystem.TurnReport diplomacyReport = diplomacy.advanceTurn(resources, cap);
+        for (int resource = 0; resource < ResourceType.COUNT; resource++) {
+            delta[resource] += diplomacyReport.resourceDelta[resource];
+        }
+        if (listener != null) {
+            for (int settlement = 0; settlement < Settlement.COUNT; settlement++) {
+                if (diplomacyReport.events[settlement] != 0) {
+                    listener.onDiplomacyEvent(settlement, diplomacyReport.events[settlement]);
+                }
+            }
+        }
+
         if (listener != null) {
             listener.onTurnResolved(delta);
         }
@@ -386,6 +408,10 @@ final class KingdomWorld {
             data.buildings.add(new int[]{building.typeId, building.row, building.col, building.turnsRemaining});
         }
         data.explored = map.exploredSnapshot();
+        data.diplomaticRelations = diplomacy.relationsSnapshot();
+        data.envoyTurns = diplomacy.envoyTurnsSnapshot();
+        data.courierTurns = diplomacy.courierTurnsSnapshot();
+        data.tradeRoutes = diplomacy.tradeRoutesSnapshot();
         return data;
     }
 
@@ -419,9 +445,11 @@ final class KingdomWorld {
         col = clampCoord(data.kittenCol);
         visualRow = row;
         visualCol = col;
-        facing = 1f;
+        facingDirection = DIRECTION_DOWN;
         path.clear();
         pendingBuildingTypeId = BuildingType.NONE;
+        diplomacy.restore(data.diplomaticRelations, data.envoyTurns,
+                data.courierTurns, data.tradeRoutes);
     }
 
     private static int clampCoord(int value) {
@@ -509,11 +537,47 @@ final class KingdomWorld {
         return visualCol;
     }
 
-    float getFacing() {
-        return facing;
+    int getFacingDirection() {
+        return facingDirection;
     }
 
     int getPathLength() {
         return path.size();
+    }
+
+    Settlement[] getSettlements() {
+        return diplomacy.getSettlements();
+    }
+
+    int getRelation(int settlementId) {
+        return diplomacy.getRelation(settlementId);
+    }
+
+    int getEnvoyTurns(int settlementId) {
+        return diplomacy.getEnvoyTurns(settlementId);
+    }
+
+    int getCourierTurns(int settlementId) {
+        return diplomacy.getCourierTurns(settlementId);
+    }
+
+    boolean hasTradeRoute(int settlementId) {
+        return diplomacy.hasTradeRoute(settlementId);
+    }
+
+    int sendEnvoy(int settlementId) {
+        return diplomacy.sendEnvoy(settlementId);
+    }
+
+    int sendCourier(int settlementId) {
+        return diplomacy.sendCourier(settlementId);
+    }
+
+    int giveGift(int settlementId) {
+        return diplomacy.giveGift(settlementId, resources);
+    }
+
+    int establishTradeRoute(int settlementId) {
+        return diplomacy.establishTradeRoute(settlementId, resources);
     }
 }

@@ -128,6 +128,7 @@ final class WorldMap {
         paintRiver(water, lakes.get(1), lakes.get(2), random);
         paintRiver(water, lakes.get(3), lakes.get(4), random);
         smoothWater(water, 1);
+        removeUnsupportedWaterTips(water);
         clearProtectedWater(water);
         copyWaterToGrid(water, grid);
 
@@ -252,6 +253,37 @@ final class WorldMap {
             System.arraycopy(source[row], 0, destination[row], 0, SIZE);
         }
         return destination;
+    }
+
+    /** The Kenney shoreline is a 3x3 blob set; remove one-cell water needles it cannot express. */
+    private static void removeUnsupportedWaterTips(boolean[][] water) {
+        for (int pass = 0; pass < 4; pass++) {
+            boolean changed = false;
+            boolean[][] next = new boolean[SIZE][SIZE];
+            for (int row = 0; row < SIZE; row++) {
+                System.arraycopy(water[row], 0, next[row], 0, SIZE);
+            }
+            for (int row = 1; row < SIZE - 1; row++) {
+                for (int col = 1; col < SIZE - 1; col++) {
+                    if (!water[row][col]) {
+                        continue;
+                    }
+                    int landSides = 0;
+                    landSides += water[row - 1][col] ? 0 : 1;
+                    landSides += water[row + 1][col] ? 0 : 1;
+                    landSides += water[row][col - 1] ? 0 : 1;
+                    landSides += water[row][col + 1] ? 0 : 1;
+                    if (landSides >= 3) {
+                        next[row][col] = false;
+                        changed = true;
+                    }
+                }
+            }
+            copyBooleanGrid(next, water);
+            if (!changed) {
+                return;
+            }
+        }
     }
 
     private static void clearProtectedWater(boolean[][] water) {

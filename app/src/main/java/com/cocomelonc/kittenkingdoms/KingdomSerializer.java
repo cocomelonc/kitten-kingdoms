@@ -19,7 +19,8 @@ import java.util.ArrayList;
  * so the caller can fall back to a fresh kingdom rather than crash.
  */
 final class KingdomSerializer {
-    private static final int SAVE_VERSION = 2;
+    private static final int SAVE_VERSION = 3;
+    private static final int LEGACY_SAVE_VERSION = 2;
     private static final int MAX_PLAUSIBLE_BUILDINGS = 100_000;
 
     private KingdomSerializer() {
@@ -46,13 +47,14 @@ final class KingdomSerializer {
             out.writeInt(building[3]);
         }
         writeExploredBits(out, data.explored);
+        writeDiplomacy(out, data);
         out.flush();
     }
 
     static KingdomSaveData read(InputStream rawIn) throws IOException {
         DataInputStream in = new DataInputStream(rawIn);
         int version = in.readInt();
-        if (version != SAVE_VERSION) {
+        if (version != SAVE_VERSION && version != LEGACY_SAVE_VERSION) {
             throw new IOException("Unsupported save version: " + version);
         }
         KingdomSaveData data = new KingdomSaveData();
@@ -76,7 +78,50 @@ final class KingdomSerializer {
             data.buildings.add(new int[]{in.readInt(), in.readInt(), in.readInt(), in.readInt()});
         }
         data.explored = readExploredBits(in);
+        if (version >= 3) {
+            readDiplomacy(in, data);
+        }
         return data;
+    }
+
+    private static void writeDiplomacy(DataOutputStream out, KingdomSaveData data) throws IOException {
+        DiplomacySystem defaults = new DiplomacySystem();
+        int[] relations = data.diplomaticRelations == null
+                ? defaults.relationsSnapshot() : data.diplomaticRelations;
+        int[] envoys = data.envoyTurns == null
+                ? defaults.envoyTurnsSnapshot() : data.envoyTurns;
+        int[] couriers = data.courierTurns == null
+                ? defaults.courierTurnsSnapshot() : data.courierTurns;
+        boolean[] routes = data.tradeRoutes == null
+                ? defaults.tradeRoutesSnapshot() : data.tradeRoutes;
+        out.writeInt(Settlement.COUNT);
+        for (int id = 0; id < Settlement.COUNT; id++) {
+            out.writeInt(valueAt(relations, id));
+            out.writeInt(valueAt(envoys, id));
+            out.writeInt(valueAt(couriers, id));
+            out.writeBoolean(id < routes.length && routes[id]);
+        }
+    }
+
+    private static void readDiplomacy(DataInputStream in, KingdomSaveData data) throws IOException {
+        int count = in.readInt();
+        if (count != Settlement.COUNT) {
+            throw new IOException("Unsupported settlement count: " + count);
+        }
+        data.diplomaticRelations = new int[count];
+        data.envoyTurns = new int[count];
+        data.courierTurns = new int[count];
+        data.tradeRoutes = new boolean[count];
+        for (int id = 0; id < count; id++) {
+            data.diplomaticRelations[id] = in.readInt();
+            data.envoyTurns[id] = in.readInt();
+            data.courierTurns[id] = in.readInt();
+            data.tradeRoutes[id] = in.readBoolean();
+        }
+    }
+
+    private static int valueAt(int[] values, int index) {
+        return index < values.length ? values[index] : 0;
     }
 
     static int packTechBits(boolean[] techUnlocked) {

@@ -9,7 +9,8 @@ Kitten Kingdoms is a tiny, calm Android game about growing a kitten
 settlement one gentle turn at a time. Walk a little kitten across a
 continuous 96x96-tile world, uncover the land as you go, and build a small
 kingdom on the ground you've discovered: gather six resources, put up eleven
-kinds of buildings, and research a ten-technology tree. There are no ads,
+kinds of buildings, research a ten-technology tree, and build peaceful
+relationships with four neighbouring settlements. There are no ads,
 accounts, purchases, trackers, network calls, timers, lives, or game-over
 screens - a kingdom can only grow, never fail.
 
@@ -28,6 +29,12 @@ fog of war reveals permanently as the kitten walks, and buildings can be
 placed on any discovered tile once you can afford them.
 
 ![World view with fog of war and a building under construction](art/runtime-level.png)
+
+The regional World Map is a real second play layer: four settlements keep
+their own relationship score, travellers take turns to arrive, and unlocked
+trade routes continue exchanging resources with the home kingdom.
+
+![World map with neighbouring settlements and diplomacy actions](art/runtime-world-map.png)
 
 Build Menu is a modal card over the world; Research and How to Play are their
 own full screens (real Android Activities, so the system Back gesture returns
@@ -59,9 +66,13 @@ The pause card uses the same EN/RU switch as every other screen:
   reverses.
 - **Research**: tech points accumulate every turn from the Town Hall and any
   Scholar's Dens. Opening *Research* leaves the world view for its own screen
-  showing the ten-node technology tree; pick a target node and once enough
+showing the ten-node technology tree; pick a target node and once enough
   points have banked, it unlocks and any leftover points carry to the next
   choice. The system Back gesture/button returns you to the kingdom.
+- **Meet neighbours**: open *World Map* to visit four distinct settlements.
+  Send an envoy, dispatch a courier, or offer the resource each neighbour
+  values. Strong relationships unlock permanent trade routes that exchange
+  small resource bundles at the end of every turn.
 - **Notice**: a small banner announces when a building finishes construction
   or a technology is researched.
 - **End Turn**: the whole economy - production, upkeep, population, and
@@ -74,26 +85,27 @@ economy, just so the kingdom doesn't feel empty.
 
 ### Why it is deliberately small
 
-- One MVP scope: a single settlement, one continuous map, six resources,
-  eleven buildings, and a ten-node tech tree - trade and diplomacy with other
-  kingdoms, and an army, are intentionally left out (the latter permanently -
-  a kingdom can only grow, never fail, and that doesn't mix with combat).
+- One focused scope: a home settlement, one continuous local map, a compact
+  regional diplomacy map, six resources, eleven buildings, ten technologies,
+  and four peaceful neighbours. There is deliberately no combat or army - a
+  kingdom can only grow, never fail.
 - No engine: a single hardware-accelerated Android `View` renders the world,
   camera, HUD, and every modal screen; only visible tiles are drawn each
   frame.
 - Zero runtime dependencies, matching the rest of the series: the kingdom
   save is a small hand-written versioned binary format over plain
-  `java.io` streams, not a database library. The format is versioned; a save
-  written by an older, incompatible version of the app is rejected cleanly
-  and replaced by a fresh kingdom rather than crashing.
+  `java.io` streams, not a database library. The format is versioned; version
+  2 saves migrate to version 3 with fresh diplomacy state rather than losing
+  the player's kingdom.
 - Terrain regenerates deterministically from a fixed seed and is never saved;
   only what the player has actually discovered or built is persisted.
 - English and Russian resources bundled in every APK/AAB.
 - Original procedural chimes and calm background music; no sampled audio
   files or codec dependency.
-- Almost everything on screen is still vector art drawn at runtime; the one
-  exception is a small set of CC0-licensed terrain tiles and building badges
-  (trees, rocks, shoreline, three building icons) - see [ART.md](ART.md).
+- The entire playable world uses one CC0 Kenney pixel tilesheet, including
+  every terrain edge, prop, building, and regional marker. The animated
+  kitten and wildlife sheets are original MIT-licensed project art; Canvas is
+  reserved for scalable interface chrome - see [ART.md](ART.md).
 
 ### Android configuration
 
@@ -119,22 +131,11 @@ TIRAMISU` and the splash-screen API is available unconditionally, so
 `MainActivity` carries no legacy branches at all. See the official Android
 [`<uses-sdk>` documentation](https://developer.android.com/guide/topics/manifest/uses-sdk-element).
 
-The complete debug build was clean-installed and exercised on a Pixel 7
-emulator running Android 16/API 36: English and Russian switching (including
-across `TechTreeActivity` and `HelpActivity`), Cyrillic font rendering, camera
-pan and zoom, tap-to-walk pathing, fog-of-war reveal, building placement
-(including tech-gated, terrain-adjacency-gated, and unaffordable rejection
-with an on-screen explanation), turn resolution and resource production,
-opening Research as its own Activity and returning the chosen technology via
-`onActivityResult`, the New Kingdom confirmation when a save already exists,
-save-on-background and continue-on-relaunch, a save from an older format
-version being rejected cleanly rather than crashing, building-complete and
-technology-unlocked notification banners, the Crystal Mine's tech-and-terrain
-gate, the eleven-building Build Menu's four-row layout, ambient wildlife
-spawning and rendering only on discovered tiles, app backgrounding, and safe
-resume-to-pause. Automated tests also prove full terrain connectivity from
-the starting tile and that the technology tree is a valid, fully reachable,
-acyclic graph.
+The verification suite builds against API 36, runs strict lint with warnings
+as errors, checks APK signature/alignment and SDK declarations, and rejects
+native libraries. Unit tests exercise terrain connectivity and shoreline
+masks, the complete economy and technology tree, diplomacy travel and trade,
+and both current save round-trips and version 2 save migration.
 
 ### Build
 
@@ -174,10 +175,12 @@ libraries.
 The unit tests validate every content registry (terrain, resources,
 buildings, technologies), prove the technology tree is acyclic and fully
 reachable from its root, flood-fill the generated terrain for full
-connectivity from the kitten's starting tile, drive the turn-based economy
+connectivity from the kitten's starting tile, validate every generated water
+edge against the tilesheet's shoreline vocabulary, drive the turn-based economy
 through production, storage caps, population growth, tech-gated and
-terrain-gated building placement, and upkeep shortfalls, and round-trip the
-save format through a byte stream.
+terrain-gated building placement, and upkeep shortfalls, exercise envoy,
+courier, gift, and trade-route rules, and round-trip and migrate the save
+format through byte streams.
 
 ### Controls
 
@@ -190,6 +193,9 @@ save format through a byte stream.
 - Tap *Research* to open the technology screen, then an available
   (non-greyed) node to set it as the active research target; Back returns to
   the kingdom.
+- Tap *World Map* to select a neighbouring settlement, send an envoy or
+  courier, offer a gift, and establish a trade route once the relationship is
+  warm enough. End turns to advance travellers and route exchanges.
 - Tap *End Turn* to resolve production, upkeep, population growth, and
   research for the whole kingdom.
 - Top-right pause button or Android Back: pause (or cancel a build selection
@@ -201,12 +207,12 @@ save format through a byte stream.
 ```text
 app/src/main/java/com/cocomelonc/kittenkingdoms/
   MainActivity.java       edge-to-edge Android host, lifecycle, and activity-result glue
-  KittenKingdomsView.java camera, tile culling, HUD, main menu, Build modal, and input
+  KittenKingdomsView.java camera, tile culling, HUD, Build and World Map overlays, input
   TechTreeActivity.java   hosts the Research screen, returns the chosen tech via Intent
   TechTreeView.java       the ten-node technology DAG, rendered full screen
   HelpActivity.java       hosts the static "How to Play" screen
-  HelpView.java           three short Explore/Build/Research sections, no scrolling
-  KingdomWorld.java       turn-based rules, kitten pathing, save/load glue
+  HelpView.java           four short Explore/Build/Research/Diplomacy sections
+  KingdomWorld.java       turn rules, kitten pathing, diplomacy, save/load glue
   WorldMap.java           96x96 deterministic terrain, fog of war, occupancy
   TerrainType.java        data-driven terrain kinds (grass, forest, water, ...)
   ResourceType.java       data-driven stockpiled resources
@@ -214,15 +220,19 @@ app/src/main/java/com/cocomelonc/kittenkingdoms/
   TechNode.java           data-driven technology tree (a DAG, not a line)
   PlacedBuilding.java     mutable building-instance placement state
   WildlifeCritter.java    decorative background creature: no AI, just wanders
-  TerrainSprites.java     loads/caches the CC0 terrain tiles and building badges
+  Settlement.java         the four neighbouring settlement definitions
+  DiplomacySystem.java    relationship, travel, gifts, and trade-route rules
+  TerrainSprites.java     slices/caches one CC0 Kenney world tilesheet
+  KittenSprites.java      four-direction, four-frame kitten animation loader
+  WildlifeSprites.java    two-frame wildlife animation loader
   TurnMath.java           stateless per-turn economy formulas
   KingdomSaveData.java    plain save/load transfer object
   KingdomSerializer.java  zero-dependency versioned binary save format
   AudioEngine.java        tiny procedural chime synthesizer
   MusicEngine.java        calm original procedural background music
-app/src/main/res/drawable-nodpi/  third-party CC0 terrain tiles and building badges
-app/src/test/             registry, reachability, economy, and save-format tests
-art/                      open-source cover and its generation notes
+app/src/main/res/drawable-nodpi/  Kenney sheet and original animated sprite sheets
+app/src/test/             terrain, economy, diplomacy, and save-format tests
+art/                      open-source cover, screenshots, and editable sprite sources
 third_party/nunito/       exact SIL OFL license for the bundled font
 third_party/kenney/       exact CC0 license for the terrain/building tiles
 scripts/                  reproducible Android verification
@@ -257,7 +267,9 @@ Kitten Kingdoms - маленькая спокойная Android-игра о то
 кошачье поселение ход за ходом. Котёнок гуляет по цельной карте 96x96 клеток,
 открывая землю по пути, а на открытых клетках можно строить: добывать шесть
 видов ресурсов, возводить одиннадцать типов зданий и исследовать дерево из
-десяти технологий. Здесь нет рекламы, регистрации, покупок, аналитики, сети,
+десяти технологий. На отдельной карте мира живут четыре соседних поселения:
+к ним можно отправлять послов и гонцов, дарить подарки и открывать постоянные
+торговые пути. Здесь нет рекламы, регистрации, покупок, аналитики, сети,
 таймеров, жизней и экрана проигрыша - королевство может только расти. По
 открытой земле бродят кролики, ежи, утята и пчёлы - чисто декоративные, без
 логики и влияния на экономику.

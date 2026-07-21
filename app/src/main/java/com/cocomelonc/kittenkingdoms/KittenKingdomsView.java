@@ -44,7 +44,8 @@ import java.util.Random;
 final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     private enum Overlay {
         NONE,
-        BUILD_MENU
+        BUILD_MENU,
+        WORLD_MAP
     }
 
     private static final float WORLD_WIDTH = 1280f;
@@ -59,9 +60,10 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     private static final float DRAG_THRESHOLD = 14f;
     private static final float PAUSE_X = 1218f;
     private static final float PAUSE_Y = 53f;
-    private static final float BUILD_BTN_CX = 380f;
-    private static final float RESEARCH_BTN_CX = 640f;
-    private static final float END_TURN_BTN_CX = 900f;
+    private static final float BUILD_BTN_CX = 200f;
+    private static final float RESEARCH_BTN_CX = 470f;
+    private static final float WORLD_MAP_BTN_CX = 740f;
+    private static final float END_TURN_BTN_CX = 1010f;
     private static final float BOTTOM_BTN_CY = 686f;
     private static final float BOTTOM_BTN_HALF_W = 108f;
     private static final float BOTTOM_BTN_HALF_H = 27f;
@@ -82,17 +84,18 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     private static final String SAVE_FILE_NAME = "kingdom.sav";
 
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
-    private final Paint spritePaint = new Paint(Paint.FILTER_BITMAP_FLAG);
+    private final Paint spritePaint = new Paint();
     private final Path path = new Path();
     private final RectF rect = new RectF();
     private final TerrainSprites sprites;
+    private final KittenSprites kittenSprites;
+    private final WildlifeSprites wildlifeSprites;
     private final android.graphics.Typeface regular;
     private final android.graphics.Typeface bold;
     private final SharedPreferences preferences;
     private final AudioEngine audio = new AudioEngine();
     private final MusicEngine music;
     private final KingdomWorld world;
-    private final TerrainType[] terrainTypes = TerrainType.createAll();
     private final List<Particle> particles = new ArrayList<>();
     private final List<WildlifeCritter> wildlifeCritters = new ArrayList<>();
     private final Random random = new Random(0xA17E5501L);
@@ -128,6 +131,7 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     private final ArrayDeque<String> pendingNotifications = new ArrayDeque<>();
     private String currentNotificationText;
     private float currentNotificationRemaining;
+    private int selectedSettlementId = Settlement.RIVERWHISKER;
 
     KittenKingdomsView(Context context) {
         super(context);
@@ -148,7 +152,12 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         android.graphics.Typeface font = context.getResources().getFont(R.font.nunito);
         regular = android.graphics.Typeface.create(font, android.graphics.Typeface.NORMAL);
         bold = android.graphics.Typeface.create(font, android.graphics.Typeface.BOLD);
+        spritePaint.setFilterBitmap(false);
+        spritePaint.setAntiAlias(false);
+        spritePaint.setDither(false);
         sprites = new TerrainSprites(context.getResources());
+        kittenSprites = new KittenSprites(context.getResources());
+        wildlifeSprites = new WildlifeSprites(context.getResources());
         setContentDescription(text(R.string.accessibility_game));
 
         saveFile = new File(context.getFilesDir(), SAVE_FILE_NAME);
@@ -233,7 +242,7 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         canvas.save();
         canvas.translate(300f, 470f + (float) Math.sin(time * 2f) * 3f);
         canvas.scale(1.6f, 1.6f);
-        drawKittenAtOrigin(canvas, time, 1f, false);
+        drawKittenAtOrigin(canvas, time, KittenSprites.DOWN, false);
         canvas.restore();
 
         drawFittedText(canvas, text(R.string.game_title), 660f, 145f,
@@ -296,6 +305,16 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
 
     private void drawPlaying(Canvas canvas, float time) {
         drawMapViewportFrame(canvas);
+
+        if (activeOverlay == Overlay.WORLD_MAP) {
+            drawDiplomacyWorldMap(canvas, time);
+            drawHud(canvas, time);
+            drawNotificationBanner(canvas);
+            if (world.getState() == KingdomWorld.State.PAUSED) {
+                drawPauseOverlay(canvas, time);
+            }
+            return;
+        }
 
         canvas.save();
         canvas.clipRect(MAP_LEFT, MAP_TOP, MAP_RIGHT, MAP_BOTTOM);
@@ -378,41 +397,24 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         float kittenY = world.getVisualRow() * TILE + TILE / 2f;
         canvas.save();
         canvas.translate(kittenX, kittenY);
-        canvas.scale(0.55f, 0.55f);
-        drawKittenAtOrigin(canvas, time, world.getFacing(), world.getPathLength() > 0);
+        drawKittenAtOrigin(canvas, time, world.getFacingDirection(), world.getPathLength() > 0);
         canvas.restore();
     }
 
     private void drawTile(Canvas canvas, WorldMap map, int row, int col) {
         float left = col * TILE;
         float top = row * TILE;
+        int seedValue = (int) (WorldMap.TERRAIN_SEED % 9973) + row * 131 + col * 17;
         if (!map.isExplored(row, col)) {
-            paint.setColor(0xFFB7BEC9);
+            canvas.drawBitmap(sprites.fogTile(seedValue), left, top, spritePaint);
+            paint.setColor(0xB85F6670);
             canvas.drawRect(left, top, left + TILE, top + TILE, paint);
-            paint.setColor(0x1FFFFFFF);
-            canvas.drawCircle(left + TILE * 0.5f, top + TILE * 0.5f, TILE * 0.18f, paint);
             return;
         }
         int terrainId = map.terrainAt(row, col);
-        paint.setColor(terrainTypes[terrainId].color);
-        canvas.drawRect(left, top, left + TILE, top + TILE, paint);
-        paint.setColor(0x10FFFFFF);
-        canvas.drawRect(left, top, left + TILE, top + 3f, paint);
-
-        int seedValue = (int) (WorldMap.TERRAIN_SEED % 9973) + row * 131 + col * 17;
-        if (terrainId == TerrainType.GRASS && Math.floorMod(seedValue, 7) == 0) {
-            paint.setColor(0x30355A2E);
-            float dotX = left + 16f + Math.floorMod(seedValue, 32);
-            float dotY = top + 16f + Math.floorMod(seedValue * 3, 32);
-            canvas.drawCircle(dotX, dotY, 2.4f, paint);
-        }
+        canvas.drawBitmap(sprites.terrainFor(map, row, col, seedValue), left, top, spritePaint);
 
         if (terrainId == TerrainType.WATER) {
-            Bitmap waterBitmap = sprites.waterBase();
-            if (waterBitmap != null) {
-                canvas.drawBitmap(waterBitmap, left, top, spritePaint);
-            }
-            drawShoreline(canvas, map, row, col, left, top, waterBitmap);
             Bitmap lily = sprites.waterLilyFor(seedValue);
             if (lily != null) {
                 float lilySize = TILE * 0.5f;
@@ -430,126 +432,29 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         }
     }
 
-    /**
-     * Composes every shoreline edge independently. Unlike the previous one-sprite priority
-     * chain, this handles opposite banks, three-sided tips, and diagonal inner corners without
-     * ever choosing a shoreline with the wrong angle.
-     */
-    private void drawShoreline(Canvas canvas, WorldMap map, int row, int col,
-            float left, float top, Bitmap waterBitmap) {
-        boolean north = isLand(map, row - 1, col);
-        boolean south = isLand(map, row + 1, col);
-        boolean west = isLand(map, row, col - 1);
-        boolean east = isLand(map, row, col + 1);
-        final float sandWidth = 12f;
-        final float grassWidth = 4.5f;
-
-        paint.setColor(0xFFE8D59D);
-        if (north) {
-            canvas.drawRect(left, top, left + TILE, top + sandWidth, paint);
-        }
-        if (south) {
-            canvas.drawRect(left, top + TILE - sandWidth, left + TILE, top + TILE, paint);
-        }
-        if (west) {
-            canvas.drawRect(left, top, left + sandWidth, top + TILE, paint);
-        }
-        if (east) {
-            canvas.drawRect(left + TILE - sandWidth, top, left + TILE, top + TILE, paint);
-        }
-
-        paint.setColor(terrainTypes[TerrainType.GRASS].color);
-        if (north) {
-            canvas.drawRect(left, top, left + TILE, top + grassWidth, paint);
-        }
-        if (south) {
-            canvas.drawRect(left, top + TILE - grassWidth, left + TILE, top + TILE, paint);
-        }
-        if (west) {
-            canvas.drawRect(left, top, left + grassWidth, top + TILE, paint);
-        }
-        if (east) {
-            canvas.drawRect(left + TILE - grassWidth, top, left + TILE, top + TILE, paint);
-        }
-
-        if (north && west) {
-            roundOuterShore(canvas, left, top, 0f, waterBitmap);
-        }
-        if (north && east) {
-            roundOuterShore(canvas, left, top, 90f, waterBitmap);
-        }
-        if (south && east) {
-            roundOuterShore(canvas, left, top, 180f, waterBitmap);
-        }
-        if (south && west) {
-            roundOuterShore(canvas, left, top, 270f, waterBitmap);
-        }
-
-        if (!north && !west && isLand(map, row - 1, col - 1)) {
-            drawInnerShore(canvas, left, top, 0f);
-        }
-        if (!north && !east && isLand(map, row - 1, col + 1)) {
-            drawInnerShore(canvas, left, top, 90f);
-        }
-        if (!south && !east && isLand(map, row + 1, col + 1)) {
-            drawInnerShore(canvas, left, top, 180f);
-        }
-        if (!south && !west && isLand(map, row + 1, col - 1)) {
-            drawInnerShore(canvas, left, top, 270f);
-        }
-    }
-
-    private boolean isLand(WorldMap map, int row, int col) {
-        return !map.inBounds(row, col) || map.terrainAt(row, col) != TerrainType.WATER;
-    }
-
-    /** Rounds the water-facing inside bend of two adjacent shore strips. */
-    private void roundOuterShore(Canvas canvas, float left, float top, float rotation,
-            Bitmap waterBitmap) {
-        canvas.save();
-        canvas.translate(left, top);
-        canvas.rotate(rotation, TILE / 2f, TILE / 2f);
-        paint.setColor(0xFFE8D59D);
-        canvas.drawCircle(12f, 12f, 10f, paint);
-        if (waterBitmap != null) {
-            canvas.save();
-            path.reset();
-            path.addCircle(13f, 13f, 6.2f, Path.Direction.CW);
-            canvas.clipPath(path);
-            canvas.drawBitmap(waterBitmap, 0f, 0f, spritePaint);
-            canvas.restore();
-        }
-        canvas.restore();
-    }
-
-    /** Draws a small rounded land corner when only the diagonal neighbor is land. */
-    private void drawInnerShore(Canvas canvas, float left, float top, float rotation) {
-        canvas.save();
-        canvas.translate(left, top);
-        canvas.rotate(rotation, TILE / 2f, TILE / 2f);
-        paint.setColor(0xFFE8D59D);
-        canvas.drawCircle(0f, 0f, 13f, paint);
-        paint.setColor(terrainTypes[TerrainType.GRASS].color);
-        canvas.drawCircle(0f, 0f, 5.2f, paint);
-        canvas.restore();
-    }
-
     private void drawBuildingToken(Canvas canvas, int typeId, float cx, float cy, boolean underConstruction, float time) {
         BuildingType type = world.getBuildingTypes()[typeId];
-        int accent = buildingAccentColor(typeId);
-        paint.setColor(0x2A4A4234);
-        canvas.drawRoundRect(cx - 24f, cy - 18f, cx + 26f, cy + 27f, 8f, 8f, paint);
-        paint.setColor(underConstruction ? lighten(accent, 0.4f) : accent);
-        canvas.drawRoundRect(cx - 26f, cy - 24f, cx + 26f, cy + 24f, 8f, 8f, paint);
-        paint.setColor(0x40FFFFFF);
-        canvas.drawRoundRect(cx - 21f, cy - 19f, cx + 21f, cy - 8f, 4f, 4f, paint);
-        drawBuildingGlyph(canvas, typeId, cx, cy);
+        Bitmap sprite = sprites.buildingFor(typeId);
+        float maxWidth = typeId == BuildingType.TOWN_HALL || typeId == BuildingType.KITTEN_COTTAGE
+                ? 78f : 58f;
+        float maxHeight = typeId == BuildingType.TOWN_HALL || typeId == BuildingType.KITTEN_COTTAGE
+                ? 78f : 66f;
+        float scale = Math.min(maxWidth / sprite.getWidth(), maxHeight / sprite.getHeight());
+        float width = sprite.getWidth() * scale;
+        float height = sprite.getHeight() * scale;
+        float bottom = cy + 30f;
+        paint.setColor(0x36433B31);
+        canvas.drawOval(cx - width * 0.38f, bottom - 7f, cx + width * 0.38f, bottom + 3f, paint);
+        spritePaint.setAlpha(underConstruction ? 150 : 255);
+        canvas.drawBitmap(sprite, null,
+                new RectF(cx - width / 2f, bottom - height, cx + width / 2f, bottom), spritePaint);
+        spritePaint.setAlpha(255);
         if (underConstruction) {
             paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(2.4f);
-            paint.setColor(0xCCFFFFFF);
+            paint.setStrokeWidth(3f);
+            paint.setColor(0xE6FFF5CF);
             float sweep = ((float) Math.sin(time * 3f) * 0.5f + 0.5f) * 300f + 30f;
-            canvas.drawArc(cx - 22f, cy - 22f, cx + 22f, cy + 22f, -90f, sweep, false, paint);
+            canvas.drawArc(cx - 25f, cy - 25f, cx + 25f, cy + 25f, -90f, sweep, false, paint);
             paint.setStyle(Paint.Style.FILL);
         }
         if (!type.playerBuildable && world.isTechUnlocked(TechNode.KINGDOM_CHARTER)) {
@@ -561,153 +466,6 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
             path.close();
             canvas.drawPath(path, paint);
         }
-    }
-
-    private int buildingAccentColor(int typeId) {
-        switch (typeId) {
-            case BuildingType.TOWN_HALL:
-                return 0xFFC98A3D;
-            case BuildingType.FISHING_DOCK:
-                return 0xFF6FB0D8;
-            case BuildingType.LUMBER_CAMP:
-                return 0xFF7C9E5C;
-            case BuildingType.QUARRY:
-                return 0xFF9E98A2;
-            case BuildingType.CATNIP_FARM:
-                return 0xFF8FC15C;
-            case BuildingType.WEAVERS_COTTAGE:
-                return 0xFFD88FB0;
-            case BuildingType.KITTEN_COTTAGE:
-                return 0xFFE0A96A;
-            case BuildingType.STORAGE_BARN:
-                return 0xFFB08A55;
-            case BuildingType.SCHOLARS_DEN:
-                return 0xFF7C8FC1;
-            case BuildingType.COZY_PLAZA:
-                return 0xFFE9B65C;
-            case BuildingType.CRYSTAL_MINE:
-                return 0xFF8E7CD8;
-            default:
-                return 0xFFAAAAAA;
-        }
-    }
-
-    private void drawBuildingGlyph(Canvas canvas, int typeId, float cx, float cy) {
-        paint.setColor(0xE6FFFFFF);
-        switch (typeId) {
-            case BuildingType.TOWN_HALL:
-                path.reset();
-                path.moveTo(cx - 12f, cy + 10f);
-                path.lineTo(cx, cy - 10f);
-                path.lineTo(cx + 12f, cy + 10f);
-                path.close();
-                canvas.drawPath(path, paint);
-                path.reset();
-                path.moveTo(cx + 0.5f, cy - 16f);
-                path.lineTo(cx + 7f, cy - 13f);
-                path.lineTo(cx + 0.5f, cy - 10f);
-                path.close();
-                canvas.drawPath(path, paint);
-                paint.setColor(buildingAccentColor(typeId));
-                canvas.drawRoundRect(cx - 3f, cy + 2f, cx + 3f, cy + 10f, 1f, 1f, paint);
-                break;
-            case BuildingType.FISHING_DOCK:
-                path.reset();
-                path.moveTo(cx - 10f, cy);
-                path.quadTo(cx - 2f, cy - 8f, cx + 8f, cy - 3f);
-                path.quadTo(cx + 2f, cy, cx + 8f, cy + 3f);
-                path.quadTo(cx - 2f, cy + 8f, cx - 10f, cy);
-                path.close();
-                canvas.drawPath(path, paint);
-                path.reset();
-                path.moveTo(cx - 10f, cy);
-                path.lineTo(cx - 16f, cy - 5f);
-                path.lineTo(cx - 16f, cy + 5f);
-                path.close();
-                canvas.drawPath(path, paint);
-                paint.setColor(buildingAccentColor(typeId));
-                canvas.drawCircle(cx + 3f, cy - 2f, 1.2f, paint);
-                break;
-            case BuildingType.LUMBER_CAMP:
-                drawBadgeBitmap(canvas, sprites.lumberCampBadge, cx, cy);
-                break;
-            case BuildingType.QUARRY:
-                drawBadgeBitmap(canvas, sprites.quarryBadge, cx, cy);
-                break;
-            case BuildingType.CATNIP_FARM:
-                canvas.drawOval(cx - 4f, cy - 12f, cx + 4f, cy + 6f, paint);
-                canvas.drawOval(cx - 12f, cy - 2f, cx - 2f, cy + 8f, paint);
-                canvas.drawOval(cx + 2f, cy - 2f, cx + 12f, cy + 8f, paint);
-                break;
-            case BuildingType.WEAVERS_COTTAGE:
-                path.reset();
-                boolean firstSpiralPoint = true;
-                for (int i = 0; i <= 24; i++) {
-                    double angle = i * 0.5;
-                    float spiralRadius = 9f * (1f - i / 30f);
-                    float x = cx + (float) Math.cos(angle) * spiralRadius;
-                    float y = cy + (float) Math.sin(angle) * spiralRadius;
-                    if (firstSpiralPoint) {
-                        path.moveTo(x, y);
-                        firstSpiralPoint = false;
-                    } else {
-                        path.lineTo(x, y);
-                    }
-                }
-                paint.setStyle(Paint.Style.STROKE);
-                paint.setStrokeWidth(2.2f);
-                paint.setStrokeCap(Paint.Cap.ROUND);
-                canvas.drawPath(path, paint);
-                paint.setStyle(Paint.Style.FILL);
-                break;
-            case BuildingType.KITTEN_COTTAGE:
-                path.reset();
-                path.moveTo(cx - 9f, cy + 4f);
-                path.lineTo(cx, cy - 10f);
-                path.lineTo(cx + 9f, cy + 4f);
-                path.close();
-                canvas.drawPath(path, paint);
-                path.reset();
-                path.moveTo(cx - 6f, cy + 9f);
-                path.cubicTo(cx - 9f, cy + 4f, cx - 2f, cy + 3f, cx, cy + 7f);
-                path.cubicTo(cx + 2f, cy + 3f, cx + 9f, cy + 4f, cx + 6f, cy + 9f);
-                path.lineTo(cx, cy + 14f);
-                path.close();
-                canvas.drawPath(path, paint);
-                break;
-            case BuildingType.STORAGE_BARN:
-                canvas.drawRoundRect(cx - 10f, cy - 8f, cx + 10f, cy + 11f, 3f, 3f, paint);
-                paint.setColor(buildingAccentColor(typeId));
-                paint.setStyle(Paint.Style.STROKE);
-                paint.setStrokeWidth(2f);
-                canvas.drawLine(cx - 9f, cy - 7f, cx + 9f, cy + 10f, paint);
-                canvas.drawLine(cx + 9f, cy - 7f, cx - 9f, cy + 10f, paint);
-                paint.setStyle(Paint.Style.FILL);
-                break;
-            case BuildingType.SCHOLARS_DEN:
-                canvas.drawRoundRect(cx - 10f, cy - 8f, cx + 10f, cy + 9f, 2f, 2f, paint);
-                paint.setColor(buildingAccentColor(typeId));
-                canvas.drawLine(cx, cy - 7f, cx, cy + 8f, paint);
-                canvas.drawLine(cx - 9f, cy - 7f, cx, cy - 2f, paint);
-                canvas.drawLine(cx + 9f, cy - 7f, cx, cy - 2f, paint);
-                break;
-            case BuildingType.COZY_PLAZA:
-                canvas.drawCircle(cx, cy, 3f, paint);
-                for (int i = 0; i < 6; i++) {
-                    double angle = Math.PI * 2 * i / 6.0;
-                    canvas.drawCircle(cx + (float) Math.cos(angle) * 9f, cy + (float) Math.sin(angle) * 9f, 2.2f, paint);
-                }
-                break;
-            case BuildingType.CRYSTAL_MINE:
-                drawBadgeBitmap(canvas, sprites.crystalMineBadge, cx, cy);
-                break;
-            default:
-                break;
-        }
-    }
-
-    private void drawBadgeBitmap(Canvas canvas, Bitmap bitmap, float cx, float cy) {
-        canvas.drawBitmap(bitmap, cx - bitmap.getWidth() / 2f, cy - bitmap.getHeight() / 2f, spritePaint);
     }
 
     private void drawGridOverlayIfPlacing(Canvas canvas) {
@@ -763,6 +521,7 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
 
         drawBottomButton(canvas, BUILD_BTN_CX, text(R.string.build_menu_title), 0xFFEFE3C4);
         drawBottomButton(canvas, RESEARCH_BTN_CX, text(R.string.tech_tree_title), 0xFFC9DCEF);
+        drawBottomButton(canvas, WORLD_MAP_BTN_CX, text(R.string.world_map_button), 0xFFE7D3EC);
         drawBottomButton(canvas, END_TURN_BTN_CX, text(R.string.end_turn), 0xFFC7E4C9);
     }
 
@@ -770,6 +529,197 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         drawPill(canvas, cx - BOTTOM_BTN_HALF_W, BOTTOM_BTN_CY - BOTTOM_BTN_HALF_H,
                 cx + BOTTOM_BTN_HALF_W, BOTTOM_BTN_CY + BOTTOM_BTN_HALF_H, fill, 0x1E3E3226);
         drawFittedText(canvas, label, cx, BOTTOM_BTN_CY + 7f, 21f, BOTTOM_BTN_HALF_W * 1.8f, 0xFF443C2E, true);
+    }
+
+    /** Full regional layer: travelling diplomats and persistent trade routes, not a popup list. */
+    private void drawDiplomacyWorldMap(Canvas canvas, float time) {
+        canvas.save();
+        canvas.clipRect(MAP_LEFT, MAP_TOP, MAP_RIGHT, MAP_BOTTOM);
+        for (float y = MAP_TOP; y < MAP_BOTTOM; y += TILE) {
+            for (float x = MAP_LEFT; x < MAP_RIGHT; x += TILE) {
+                int seed = Math.round(x * 3f + y * 7f);
+                canvas.drawBitmap(sprites.fogTile(seed), x, y, spritePaint);
+            }
+        }
+        paint.setColor(0xC8F6EBCB);
+        canvas.drawRect(MAP_LEFT, MAP_TOP, MAP_RIGHT, MAP_BOTTOM, paint);
+
+        drawFittedText(canvas, text(R.string.world_map_title), 430f, 130f,
+                34f, 700f, 0xFF443C2E, true);
+        drawFittedText(canvas, text(R.string.world_map_subtitle), 430f, 158f,
+                16f, 710f, 0xFF74694F, false);
+
+        float homeX = 445f;
+        float homeY = 365f;
+        Settlement[] settlements = world.getSettlements();
+        for (Settlement settlement : settlements) {
+            drawDiplomaticRoute(canvas, homeX, homeY, settlement, time);
+        }
+
+        paint.setColor(0x34433B31);
+        canvas.drawOval(homeX - 38f, homeY + 31f, homeX + 38f, homeY + 43f, paint);
+        Bitmap homeKitten = kittenSprites.frame(KittenSprites.DOWN, 0);
+        canvas.drawBitmap(homeKitten, null,
+                new RectF(homeX - 35f, homeY - 35f, homeX + 35f, homeY + 35f), spritePaint);
+        drawPill(canvas, homeX - 78f, homeY + 42f, homeX + 78f, homeY + 72f,
+                0xF5FFF8E8, 0x183E3226);
+        drawFittedText(canvas, text(R.string.our_kingdom), homeX, homeY + 63f,
+                16f, 142f, 0xFF443C2E, true);
+
+        for (Settlement settlement : settlements) {
+            drawSettlementNode(canvas, settlement);
+        }
+        drawSettlementPanel(canvas, settlements[selectedSettlementId]);
+        canvas.restore();
+    }
+
+    private void drawDiplomaticRoute(Canvas canvas, float homeX, float homeY,
+            Settlement settlement, float time) {
+        boolean active = world.hasTradeRoute(settlement.id);
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeCap(Paint.Cap.ROUND);
+        paint.setStrokeWidth(active ? 6f : 3f);
+        paint.setColor(active ? 0xD9D6A13B : 0x8A8D806A);
+        if (active) {
+            canvas.drawLine(homeX, homeY, settlement.mapX, settlement.mapY, paint);
+        } else {
+            for (int segment = 0; segment < 18; segment += 2) {
+                float start = segment / 18f;
+                float end = Math.min(1f, (segment + 1) / 18f);
+                canvas.drawLine(lerp(homeX, settlement.mapX, start), lerp(homeY, settlement.mapY, start),
+                        lerp(homeX, settlement.mapX, end), lerp(homeY, settlement.mapY, end), paint);
+            }
+        }
+        paint.setStyle(Paint.Style.FILL);
+
+        if (world.getEnvoyTurns(settlement.id) > 0 || world.getCourierTurns(settlement.id) > 0) {
+            float progress = (time * 0.18f + settlement.id * 0.21f) % 1f;
+            float x = lerp(homeX, settlement.mapX, progress);
+            float y = lerp(homeY, settlement.mapY, progress);
+            paint.setColor(0xFFFDF6DE);
+            canvas.drawCircle(x, y, 10f, paint);
+            paint.setColor(settlement.color);
+            canvas.drawCircle(x, y, 6f, paint);
+        }
+    }
+
+    private void drawSettlementNode(Canvas canvas, Settlement settlement) {
+        boolean selected = settlement.id == selectedSettlementId;
+        float cx = settlement.mapX;
+        float cy = settlement.mapY;
+        paint.setColor(selected ? 0xFFFDF6DE : 0xDDEEE3C4);
+        canvas.drawCircle(cx, cy, selected ? 51f : 44f, paint);
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(selected ? 5f : 3f);
+        paint.setColor(settlement.color);
+        canvas.drawCircle(cx, cy, selected ? 51f : 44f, paint);
+        paint.setStyle(Paint.Style.FILL);
+        Bitmap icon = sprites.settlementFor(settlement.id);
+        float maxSize = selected ? 72f : 62f;
+        float scale = Math.min(maxSize / icon.getWidth(), maxSize / icon.getHeight());
+        float width = icon.getWidth() * scale;
+        float height = icon.getHeight() * scale;
+        canvas.drawBitmap(icon, null,
+                new RectF(cx - width / 2f, cy - height / 2f, cx + width / 2f, cy + height / 2f),
+                spritePaint);
+        drawPill(canvas, cx - 84f, cy + 54f, cx + 84f, cy + 84f,
+                0xF5FFF9E9, 0x183E3226);
+        drawFittedText(canvas, text(settlement.nameRes), cx, cy + 75f,
+                15f, 154f, 0xFF443C2E, true);
+    }
+
+    private void drawSettlementPanel(Canvas canvas, Settlement settlement) {
+        float left = 855f;
+        float right = 1238f;
+        float center = (left + right) / 2f;
+        paint.setColor(0x2A443C2E);
+        canvas.drawRoundRect(left + 4f, 114f, right + 4f, 628f, 28f, 28f, paint);
+        paint.setColor(0xF8FFF9E9);
+        canvas.drawRoundRect(left, 108f, right, 622f, 28f, 28f, paint);
+
+        drawFittedText(canvas, text(settlement.nameRes), center, 153f,
+                28f, 330f, 0xFF443C2E, true);
+        drawFittedText(canvas, text(settlement.descriptionRes), center, 181f,
+                15f, 330f, 0xFF74694F, false);
+
+        int relation = world.getRelation(settlement.id);
+        drawFittedText(canvas, text(R.string.relation_label) + " · "
+                        + text(relationStatusRes(relation)), center, 221f,
+                17f, 320f, 0xFF5D5546, true);
+        paint.setColor(0xFFE4DDC9);
+        canvas.drawRoundRect(left + 34f, 236f, right - 34f, 252f, 8f, 8f, paint);
+        paint.setColor(settlement.color);
+        canvas.drawRoundRect(left + 34f, 236f,
+                left + 34f + (right - left - 68f) * relation / 100f, 252f, 8f, 8f, paint);
+        drawFittedText(canvas, relation + "/100", center, 275f,
+                15f, 180f, 0xFF74694F, false);
+
+        String travel = "";
+        if (world.getEnvoyTurns(settlement.id) > 0) {
+            travel = quantityText(R.plurals.envoy_arrives_in, world.getEnvoyTurns(settlement.id));
+        } else if (world.getCourierTurns(settlement.id) > 0) {
+            travel = quantityText(R.plurals.courier_arrives_in, world.getCourierTurns(settlement.id));
+        }
+        if (!travel.isEmpty()) {
+            drawFittedText(canvas, travel, center, 299f, 15f, 320f, settlement.color, true);
+        }
+
+        int requested = settlement.requestedResource;
+        int offered = settlement.offeredResource;
+        String exchange = String.format(text(R.string.trade_exchange),
+                DiplomacySystem.TRADE_EXPORT_AMOUNT, resourceName(requested),
+                DiplomacySystem.TRADE_IMPORT_AMOUNT, resourceName(offered));
+        drawFittedText(canvas, exchange, center, 323f, 14f, 325f, 0xFF74694F, false);
+
+        drawDiplomacyButton(canvas, center, 360f, text(R.string.send_envoy),
+                world.getEnvoyTurns(settlement.id) == 0);
+        drawDiplomacyButton(canvas, center, 410f, text(R.string.send_courier),
+                world.getCourierTurns(settlement.id) == 0 && relation >= 15);
+        String gift = text(R.string.give_gift) + " · "
+                + String.format(text(R.string.gift_cost), DiplomacySystem.GIFT_AMOUNT, resourceName(requested));
+        drawDiplomacyButton(canvas, center, 460f, gift,
+                world.getResource(requested) >= DiplomacySystem.GIFT_AMOUNT);
+        String trade = world.hasTradeRoute(settlement.id)
+                ? text(R.string.trade_route_active) : text(R.string.open_trade_route);
+        drawDiplomacyButton(canvas, center, 510f, trade,
+                !world.hasTradeRoute(settlement.id)
+                        && relation >= DiplomacySystem.TRADE_RELATION_REQUIRED);
+        if (!world.hasTradeRoute(settlement.id)) {
+            drawFittedText(canvas, text(R.string.trade_route_cost), center, 545f,
+                    13f, 325f, 0xFF8A806E, false);
+        }
+        drawPill(canvas, center - 145f, 566f, center + 145f, 608f,
+                0xFFE9DDCB, 0x183E3226);
+        drawFittedText(canvas, text(R.string.back_to_kingdom), center, 593f,
+                16f, 270f, 0xFF443C2E, true);
+    }
+
+    private void drawDiplomacyButton(Canvas canvas, float cx, float cy, String label, boolean enabled) {
+        drawPill(canvas, cx - 165f, cy - 20f, cx + 165f, cy + 20f,
+                enabled ? 0xFFE8D7AC : 0xFFE8E4D8, 0x183E3226);
+        drawFittedText(canvas, label, cx, cy + 6f, 15f, 305f,
+                enabled ? 0xFF443C2E : 0xFF9A9284, true);
+    }
+
+    private int relationStatusRes(int relation) {
+        if (relation >= 70) {
+            return R.string.relation_allied;
+        }
+        if (relation >= DiplomacySystem.TRADE_RELATION_REQUIRED) {
+            return R.string.relation_friendly;
+        }
+        if (relation >= 15) {
+            return R.string.relation_familiar;
+        }
+        return R.string.relation_wary;
+    }
+
+    private String resourceName(int resourceId) {
+        return text(ResourceType.createAll()[resourceId].nameRes);
+    }
+
+    private static float lerp(float start, float end, float amount) {
+        return start + (end - start) * amount;
     }
 
     private void drawPlacementBanner(Canvas canvas, float time) {
@@ -914,59 +864,13 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         canvas.restoreToCount(layer);
     }
 
-    private void drawKittenAtOrigin(Canvas canvas, float time, float facing, boolean moving) {
-        canvas.save();
-        canvas.scale(facing < 0f ? -1f : 1f, 1f);
-        float bounce = moving ? (float) Math.sin(time * 9f) * 2f : (float) Math.sin(time * 2f) * 0.6f;
-        canvas.translate(0f, bounce);
-
-        paint.setColor(0x264A4234);
-        canvas.drawOval(-26f, 20f, 26f, 30f, paint);
-
-        paint.setColor(0xFFF0A582);
-        canvas.drawOval(-22f, -14f, 22f, 22f, paint);
-        paint.setColor(0xFFF7C6AA);
-        canvas.drawOval(-4f, -6f, 22f, 18f, paint);
-
-        path.reset();
-        path.moveTo(-16f, -12f);
-        path.lineTo(-20f, -26f);
-        path.lineTo(-8f, -16f);
-        path.close();
-        paint.setColor(0xFFF0A582);
-        canvas.drawPath(path, paint);
-        path.reset();
-        path.moveTo(10f, -14f);
-        path.lineTo(16f, -27f);
-        path.lineTo(20f, -12f);
-        path.close();
-        canvas.drawPath(path, paint);
-
-        paint.setColor(0xFF5E5872);
-        canvas.drawCircle(-6f, -2f, 2.2f, paint);
-        canvas.drawCircle(9f, -2f, 2.2f, paint);
-        paint.setColor(0xFFD88391);
-        path.reset();
-        path.moveTo(0f, 4f);
-        path.lineTo(4f, 4f);
-        path.lineTo(2f, 7f);
-        path.close();
-        canvas.drawPath(path, paint);
-
-        paint.setStyle(Paint.Style.STROKE);
-        paint.setStrokeWidth(9f);
-        paint.setStrokeCap(Paint.Cap.ROUND);
-        paint.setColor(0xFFE99B78);
-        path.reset();
-        path.moveTo(-18f, 14f);
-        path.cubicTo(-34f, 4f, -36f, 20f, -28f, 24f);
-        canvas.drawPath(path, paint);
-        paint.setStyle(Paint.Style.FILL);
-
-        paint.setColor(0xFFE69673);
-        canvas.drawOval(-17f, 18f, -6f, 28f, paint);
-        canvas.drawOval(6f, 18f, 17f, 28f, paint);
-        canvas.restore();
+    private void drawKittenAtOrigin(Canvas canvas, float time, int direction, boolean moving) {
+        int frame = moving ? Math.floorMod((int) (time * 7f), 4) : 0;
+        float idle = moving ? 0f : (float) Math.sin(time * 2f) * 0.7f;
+        paint.setColor(0x35433B31);
+        canvas.drawOval(-23f, 18f, 23f, 27f, paint);
+        Bitmap sprite = kittenSprites.frame(direction, frame);
+        canvas.drawBitmap(sprite, null, new RectF(-32f, -39f + idle, 32f, 25f + idle), spritePaint);
     }
 
     private void drawHill(Canvas canvas, int color, float top, float amplitude, float frequency) {
@@ -1161,94 +1065,10 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         float bounce = (float) Math.sin(time * bounceFreq + critter.worldX * 0.05f) * 1.6f;
         canvas.translate(0f, bounce);
         paint.setColor(0x24433B31);
-        canvas.drawOval(-17f, 11f, 17f, 17f, paint);
-        switch (critter.species) {
-            case WildlifeCritter.HEDGEHOG:
-                paint.setColor(0xFF9A7654);
-                canvas.drawOval(-17f, -9f, 14f, 12f, paint);
-                paint.setColor(0xFF6F5845);
-                for (int i = 0; i < 5; i++) {
-                    float spikeX = -15f + i * 6.5f;
-                    path.reset();
-                    path.moveTo(spikeX, -6f);
-                    path.lineTo(spikeX + 3.2f, -16f - (i % 2) * 2f);
-                    path.lineTo(spikeX + 6.4f, -6f);
-                    path.close();
-                    canvas.drawPath(path, paint);
-                }
-                paint.setColor(0xFFF3DFC1);
-                canvas.drawOval(4f, -7f, 18f, 8f, paint);
-                paint.setColor(0xFF5E5872);
-                canvas.drawCircle(12f, -3f, 1.8f, paint);
-                paint.setColor(0xFF4A4038);
-                canvas.drawCircle(18f, 1f, 2.3f, paint);
-                paint.setColor(0xFFF0A9A8);
-                canvas.drawCircle(12f, 2f, 2.1f, paint);
-                break;
-            case WildlifeCritter.RABBIT:
-                paint.setColor(0xFFECE6DC);
-                canvas.drawOval(-14f, -3f, 13f, 15f, paint);
-                canvas.drawCircle(2f, -11f, 10f, paint);
-                canvas.drawOval(-6f, -30f, 0f, -9f, paint);
-                canvas.drawOval(5f, -30f, 11f, -9f, paint);
-                paint.setColor(0xFFF7F4EE);
-                canvas.drawCircle(-13f, 1f, 6f, paint);
-                paint.setColor(0xFFEBAFC0);
-                canvas.drawOval(-4.5f, -28f, -1.5f, -13f, paint);
-                canvas.drawOval(6.5f, -28f, 9.5f, -13f, paint);
-                canvas.drawCircle(-3f, -6f, 2.2f, paint);
-                paint.setColor(0xFF5E5872);
-                canvas.drawCircle(-1f, -12f, 1.8f, paint);
-                canvas.drawCircle(6f, -12f, 1.8f, paint);
-                paint.setColor(Color.WHITE);
-                canvas.drawCircle(-0.5f, -12.6f, 0.65f, paint);
-                canvas.drawCircle(6.5f, -12.6f, 0.65f, paint);
-                paint.setColor(0xFFCF8399);
-                canvas.drawCircle(2.5f, -8f, 1.8f, paint);
-                break;
-            case WildlifeCritter.DUCKLING:
-                paint.setColor(0xFFF3CB4F);
-                canvas.drawOval(-15f, -5f, 13f, 13f, paint);
-                canvas.drawCircle(9f, -11f, 9f, paint);
-                paint.setColor(0xFFE8B942);
-                canvas.drawOval(-8f, -2f, 7f, 8f, paint);
-                paint.setColor(0xFFE08A3C);
-                path.reset();
-                path.moveTo(16f, -11f);
-                path.lineTo(24f, -8f);
-                path.lineTo(16f, -5f);
-                path.close();
-                canvas.drawPath(path, paint);
-                paint.setColor(0xFF5E5872);
-                canvas.drawCircle(10f, -13f, 1.7f, paint);
-                paint.setColor(Color.WHITE);
-                canvas.drawCircle(10.5f, -13.5f, 0.6f, paint);
-                paint.setColor(0xFFF0A58D);
-                canvas.drawCircle(12f, -8f, 1.8f, paint);
-                break;
-            case WildlifeCritter.BEE:
-                paint.setColor(0xCFFFFFFF);
-                canvas.drawOval(-11f, -17f, -1f, -3f, paint);
-                canvas.drawOval(1f, -17f, 11f, -3f, paint);
-                paint.setColor(0xFFF3C74A);
-                canvas.drawOval(-11f, -7f, 11f, 8f, paint);
-                paint.setColor(0xFF443C2E);
-                canvas.drawRect(-4f, -6f, -1f, 7f, paint);
-                canvas.drawRect(3f, -5f, 6f, 6f, paint);
-                canvas.drawCircle(-4f, -2f, 1.4f, paint);
-                canvas.drawCircle(5f, -2f, 1.4f, paint);
-                paint.setStyle(Paint.Style.STROKE);
-                paint.setStrokeWidth(1.5f);
-                canvas.drawLine(-5f, -7f, -8f, -12f, paint);
-                canvas.drawLine(5f, -7f, 8f, -12f, paint);
-                paint.setStyle(Paint.Style.FILL);
-                paint.setColor(0xFFF1A6A4);
-                canvas.drawCircle(-7f, 2f, 1.8f, paint);
-                canvas.drawCircle(7f, 2f, 1.8f, paint);
-                break;
-            default:
-                break;
-        }
+        canvas.drawOval(-20f, 13f, 20f, 20f, paint);
+        int frame = Math.floorMod((int) (time * 4f + critter.worldX * 0.02f), 2);
+        Bitmap sprite = wildlifeSprites.frame(critter.species, frame);
+        canvas.drawBitmap(sprite, null, new RectF(-27f, -30f, 27f, 24f), spritePaint);
         canvas.restore();
     }
 
@@ -1422,6 +1242,11 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     }
 
     private void handleOverlayTap(float logicalX, float logicalY) {
+        if (activeOverlay == Overlay.WORLD_MAP) {
+            handleWorldMapOverlayTap(logicalX, logicalY);
+            invalidate();
+            return;
+        }
         float cancelCx = (MODAL_LEFT + MODAL_RIGHT) / 2f;
         float cancelCy = MODAL_BOTTOM - 40f;
         if (isInsidePill(logicalX, logicalY, cancelCx, cancelCy, 90f, 20f)) {
@@ -1433,6 +1258,92 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
             handleBuildMenuTap(logicalX, logicalY);
         }
         invalidate();
+    }
+
+    private void handleWorldMapOverlayTap(float logicalX, float logicalY) {
+        if (isInsidePill(logicalX, logicalY, PAUSE_X, PAUSE_Y, 34f, 34f)) {
+            world.pause();
+            saveKingdom();
+            return;
+        }
+        if (isInsidePill(logicalX, logicalY, WORLD_MAP_BTN_CX, BOTTOM_BTN_CY,
+                BOTTOM_BTN_HALF_W, BOTTOM_BTN_HALF_H)) {
+            activeOverlay = Overlay.NONE;
+            return;
+        }
+        if (isInsidePill(logicalX, logicalY, BUILD_BTN_CX, BOTTOM_BTN_CY,
+                BOTTOM_BTN_HALF_W, BOTTOM_BTN_HALF_H)) {
+            activeOverlay = Overlay.BUILD_MENU;
+            return;
+        }
+        if (isInsidePill(logicalX, logicalY, RESEARCH_BTN_CX, BOTTOM_BTN_CY,
+                BOTTOM_BTN_HALF_W, BOTTOM_BTN_HALF_H)) {
+            activeOverlay = Overlay.NONE;
+            openTechTree();
+            return;
+        }
+        if (isInsidePill(logicalX, logicalY, END_TURN_BTN_CX, BOTTOM_BTN_CY,
+                BOTTOM_BTN_HALF_W, BOTTOM_BTN_HALF_H)) {
+            world.endTurn();
+            performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
+            announceForAccessibility(text(R.string.accessibility_turn_ended));
+            saveKingdom();
+            return;
+        }
+
+        for (Settlement settlement : world.getSettlements()) {
+            if (Math.hypot(logicalX - settlement.mapX, logicalY - settlement.mapY) <= 66f) {
+                selectedSettlementId = settlement.id;
+                performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
+                return;
+            }
+        }
+
+        float panelCenter = (855f + 1238f) / 2f;
+        if (isInsidePill(logicalX, logicalY, panelCenter, 590f, 145f, 22f)) {
+            activeOverlay = Overlay.NONE;
+            return;
+        }
+        if (isInsidePill(logicalX, logicalY, panelCenter, 360f, 165f, 20f)) {
+            showDiplomacyResult(world.sendEnvoy(selectedSettlementId), R.string.diplomacy_started);
+        } else if (isInsidePill(logicalX, logicalY, panelCenter, 410f, 165f, 20f)) {
+            showDiplomacyResult(world.sendCourier(selectedSettlementId), R.string.diplomacy_started);
+        } else if (isInsidePill(logicalX, logicalY, panelCenter, 460f, 165f, 20f)) {
+            showDiplomacyResult(world.giveGift(selectedSettlementId), R.string.diplomacy_gift_sent);
+        } else if (isInsidePill(logicalX, logicalY, panelCenter, 510f, 165f, 20f)) {
+            showDiplomacyResult(world.establishTradeRoute(selectedSettlementId),
+                    R.string.diplomacy_trade_opened);
+        }
+    }
+
+    private void showDiplomacyResult(int result, int successMessageRes) {
+        int messageRes;
+        switch (result) {
+            case DiplomacySystem.ACTION_OK:
+                messageRes = successMessageRes;
+                performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
+                saveKingdom();
+                break;
+            case DiplomacySystem.ACTION_ALREADY_TRAVELLING:
+                messageRes = R.string.diplomacy_already_travelling;
+                performHapticFeedback(HapticFeedbackConstants.REJECT);
+                break;
+            case DiplomacySystem.ACTION_NEEDS_RELATION:
+                messageRes = R.string.diplomacy_needs_relation;
+                performHapticFeedback(HapticFeedbackConstants.REJECT);
+                break;
+            case DiplomacySystem.ACTION_NEEDS_RESOURCES:
+                messageRes = R.string.diplomacy_needs_resources;
+                performHapticFeedback(HapticFeedbackConstants.REJECT);
+                break;
+            case DiplomacySystem.ACTION_ROUTE_EXISTS:
+                messageRes = R.string.diplomacy_route_exists;
+                break;
+            case DiplomacySystem.ACTION_INVALID:
+            default:
+                return;
+        }
+        enqueueNotification(text(messageRes));
     }
 
     private void handleBuildMenuTap(float logicalX, float logicalY) {
@@ -1480,6 +1391,13 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         }
         if (isInsidePill(logicalX, logicalY, RESEARCH_BTN_CX, BOTTOM_BTN_CY, BOTTOM_BTN_HALF_W, BOTTOM_BTN_HALF_H)) {
             openTechTree();
+            return;
+        }
+        if (isInsidePill(logicalX, logicalY, WORLD_MAP_BTN_CX, BOTTOM_BTN_CY,
+                BOTTOM_BTN_HALF_W, BOTTOM_BTN_HALF_H)) {
+            world.cancelPlacement();
+            activeOverlay = Overlay.WORLD_MAP;
+            invalidate();
             return;
         }
         if (isInsidePill(logicalX, logicalY, END_TURN_BTN_CX, BOTTOM_BTN_CY, BOTTOM_BTN_HALF_W, BOTTOM_BTN_HALF_H)) {
@@ -1560,6 +1478,10 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
 
     private String text(int resource) {
         return localizedContext.getString(resource);
+    }
+
+    private String quantityText(int resource, int quantity) {
+        return localizedContext.getResources().getQuantityString(resource, quantity, quantity);
     }
 
     private void loadAndContinue() {
@@ -1690,6 +1612,17 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     @Override
     public void onPopulationGrew(int newPopulation) {
         audio.playPopulationGrew();
+    }
+
+    @Override
+    public void onDiplomacyEvent(int settlementId, int eventMask) {
+        Settlement settlement = world.getSettlements()[settlementId];
+        if ((eventMask & DiplomacySystem.EVENT_ENVOY_ARRIVED) != 0) {
+            enqueueNotification(String.format(text(R.string.notify_envoy_arrived), text(settlement.nameRes)));
+        }
+        if ((eventMask & DiplomacySystem.EVENT_COURIER_ARRIVED) != 0) {
+            enqueueNotification(String.format(text(R.string.notify_courier_arrived), text(settlement.nameRes)));
+        }
     }
 
     private static int lighten(int color, float amount) {

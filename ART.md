@@ -2,37 +2,36 @@
 
 **Author:** cocomelonc<br>
 **Copyright:** © 2026 cocomelonc (Zhassulan Zhussupov)<br>
-**License:** MIT (original artwork) / CC0 1.0 (third-party tiles, see below)
+**License:** MIT (original artwork) / CC0 1.0 (Kenney tileset)
 
-Most of Kitten Kingdoms is still hand-drawn `Canvas` vector art generated at
-runtime by `KittenKingdomsView.java` - the kitten, the HUD, every screen, and
-most building icons. The one exception: terrain decoration (trees, rocks,
-bushes, mushrooms, a water lily) and the shoreline tiles that give lakes a
-rounded bank, plus three building badges (Lumber Camp, Quarry, Crystal Mine),
-are third-party pixel art, loaded once as bitmaps by `TerrainSprites.java`.
+Kitten Kingdoms uses one visual language for its entire playable world: the
+same 16px Kenney Roguelike/RPG sheet used by `crystal-trail`. Ground, forest
+floor, hills, stone, every shoreline angle, vegetation, rocks, buildings,
+water decoration, and world-map settlement markers are sliced from that one
+sheet by `TerrainSprites.java` and enlarged 4x with nearest-neighbour scaling.
+There are no flat Canvas terrain cells or procedurally drawn shore strips.
 
-## Third-party tiles
+## Kenney terrain and props
 
-**Source:** Kenney's ["Roguelike/RPG pack"](https://kenney.nl/assets/roguelike-rpg-pack)
-(kenney.nl), the same CC0 sheet already used by this author's
-[crystal-trail](https://github.com/cocomelonc/crystal-trail) project.<br>
-**License:** CC0 1.0 Universal - free for personal and commercial use, no
-attribution required. Full text: [`third_party/kenney/KENNEY_LICENSE.txt`](third_party/kenney/KENNEY_LICENSE.txt).<br>
-**Files used** (`app/src/main/res/drawable-nodpi/`): `tree_green`, `tree_dark`,
-`tree_fruit`, `pine_green` (forest), `rock_grey_big`, `rock_grey_mid` (stone
-outcrop), `bush_round`, `mushroom_red`, `mushroom_brown` (grass), `water_lily`
-and the 13 water-edge/inner-corner/plain shoreline tiles (water), plus
-`badge_lumber_camp`, `badge_quarry`, `badge_crystal_mine` (building icons) -
-all baked once from the source sheet/sprites to their final on-screen size,
-not resized at runtime.
+**Source:** Kenney's [Roguelike/RPG pack](https://kenney.nl/assets/roguelike-rpg-pack)<br>
+**License:** CC0 1.0 Universal — free for personal and commercial use, with
+no attribution requirement.<br>
+**License text:** [`third_party/kenney/KENNEY_LICENSE.txt`](third_party/kenney/KENNEY_LICENSE.txt)<br>
+**Runtime sheet:** `app/src/main/res/drawable-nodpi/roguelike_16.png`
 
-Not used from that same pack: its graveyard props (crosses, tombstones), dead
-sapling, cactus, and statue - not a fit for a calm, no-conflict kitten
-kingdom.
+The old individually extracted runtime PNGs were removed, so the packaged app
+cannot accidentally mix them with a different terrain renderer.
 
-## Original artwork
+## Original pixel art
 
-Everything else - the kitten, buildings without a badge above, the world
-chrome, and every screenshot in `art/` - is original vector art, drawn at
-runtime, no external image generator or bitmap involved. Available under the
-repository's [MIT License](LICENSE).
+The four-direction kitten walk cycle and two-frame rabbit, hedgehog, duckling,
+and bee animations are original project artwork:
+
+- editable sources: `art/source/kitten_walk.svg`, `art/source/wildlife.svg`
+- runtime sheets: `drawable-nodpi/kitten_walk.png`, `drawable-nodpi/wildlife.png`
+- license: MIT, the same as the project code
+
+The adaptive launcher icon uses the same kitten palette and pixel proportions.
+Interface cards, typography, relationship routes, progress bars, shadows, and
+other UI chrome are drawn at runtime because they must scale cleanly and are
+interface elements rather than world tiles.

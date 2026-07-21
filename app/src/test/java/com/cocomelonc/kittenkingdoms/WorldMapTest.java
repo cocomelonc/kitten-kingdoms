@@ -113,6 +113,27 @@ public final class WorldMapTest {
     }
 
     @Test
+    public void everyWaterCardinalMaskExistsInTheKenneyBlobTileset() {
+        WorldMap map = new WorldMap();
+        for (int row = 1; row < WorldMap.SIZE - 1; row++) {
+            for (int col = 1; col < WorldMap.SIZE - 1; col++) {
+                if (map.terrainAt(row, col) != TerrainType.WATER) {
+                    continue;
+                }
+                int landMask = 0;
+                landMask |= map.terrainAt(row - 1, col) == TerrainType.WATER ? 0 : 1;
+                landMask |= map.terrainAt(row + 1, col) == TerrainType.WATER ? 0 : 2;
+                landMask |= map.terrainAt(row, col - 1) == TerrainType.WATER ? 0 : 4;
+                landMask |= map.terrainAt(row, col + 1) == TerrainType.WATER ? 0 : 8;
+                int landSides = Integer.bitCount(landMask);
+                boolean oppositePair = landMask == 3 || landMask == 12;
+                assertTrue("Unsupported Kenney water mask " + landMask + " at " + row + "," + col,
+                        landSides <= 2 && !oppositePair);
+            }
+        }
+    }
+
+    @Test
     public void occupiedTileIsNeitherWalkableNorBuildable() {
         WorldMap map = new WorldMap();
         int row = WorldMap.START_ROW;

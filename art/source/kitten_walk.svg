@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Kitten Kingdoms four-direction walk cycle.
+  Author: cocomelonc
+  Copyright (c) 2026 cocomelonc (Zhassulan Zhussupov)
+  SPDX-License-Identifier: MIT
+-->
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="128" height="128" viewBox="0 0 128 128"
+     shape-rendering="crispEdges">
+  <defs>
+    <g id="front">
+      <!-- tail and body outline -->
+      <rect x="21" y="17" width="6" height="4" fill="#5a4235"/>
+      <rect x="24" y="14" width="4" height="5" fill="#5a4235"/>
+      <rect x="10" y="13" width="13" height="14" fill="#5a4235"/>
+      <rect x="11" y="14" width="11" height="12" fill="#e99662"/>
+      <rect x="13" y="17" width="7" height="8" fill="#f2ad73"/>
+      <!-- ears and head outline -->
+      <path d="M7 7V2h3v2h12V2h3v5h2v12H6V7z" fill="#5a4235"/>
+      <path d="M8 7V4h2v3h12V4h2v3h1v10H8z" fill="#e99662"/>
+      <rect x="10" y="5" width="2" height="3" fill="#f0a3a2"/>
+      <rect x="21" y="5" width="2" height="3" fill="#f0a3a2"/>
+      <!-- face -->
+      <rect x="10" y="10" width="3" height="3" fill="#3f3a38"/>
+      <rect x="20" y="10" width="3" height="3" fill="#3f3a38"/>
+      <rect x="11" y="10" width="1" height="1" fill="#fff8e7"/>
+      <rect x="21" y="10" width="1" height="1" fill="#fff8e7"/>
+      <rect x="13" y="13" width="7" height="4" fill="#ffe0bf"/>
+      <rect x="15" y="13" width="3" height="2" fill="#ca7180"/>
+      <rect x="16" y="15" width="1" height="2" fill="#5a4235"/>
+      <!-- forehead marking -->
+      <rect x="15" y="7" width="3" height="2" fill="#f6c18d"/>
+    </g>
+
+    <g id="side-right">
+      <!-- curled tail -->
+      <rect x="2" y="15" width="7" height="4" fill="#5a4235"/>
+      <rect x="1" y="12" width="4" height="5" fill="#5a4235"/>
+      <rect x="3" y="13" width="3" height="3" fill="#e99662"/>
+      <!-- body -->
+      <rect x="7" y="13" width="16" height="13" fill="#5a4235"/>
+      <rect x="8" y="14" width="14" height="11" fill="#e99662"/>
+      <rect x="9" y="16" width="9" height="7" fill="#f2ad73"/>
+      <!-- head and ears -->
+      <path d="M17 8V3h3v2h5V2h3v6h2v12H16V8z" fill="#5a4235"/>
+      <path d="M18 8V5h2v3h5V4h2v4h1v10H18z" fill="#e99662"/>
+      <rect x="25" y="5" width="2" height="3" fill="#f0a3a2"/>
+      <rect x="21" y="10" width="3" height="3" fill="#3f3a38"/>
+      <rect x="22" y="10" width="1" height="1" fill="#fff8e7"/>
+      <rect x="24" y="13" width="6" height="4" fill="#ffe0bf"/>
+      <rect x="28" y="13" width="3" height="2" fill="#ca7180"/>
+      <rect x="20" y="7" width="3" height="2" fill="#f6c18d"/>
+    </g>
+
+    <g id="back">
+      <!-- tail and body -->
+      <rect x="5" y="16" width="7" height="4" fill="#5a4235"/>
+      <rect x="4" y="13" width="4" height="5" fill="#5a4235"/>
+      <rect x="10" y="13" width="13" height="14" fill="#5a4235"/>
+      <rect x="11" y="14" width="11" height="12" fill="#e99662"/>
+      <rect x="14" y="17" width="5" height="8" fill="#f2ad73"/>
+      <!-- back of head and ears -->
+      <path d="M7 8V2h3v3h12V2h3v6h2v12H6V8z" fill="#5a4235"/>
+      <path d="M8 8V4h2v4h12V4h2v4h1v10H8z" fill="#e99662"/>
+      <rect x="10" y="5" width="2" height="3" fill="#f0a3a2"/>
+      <rect x="21" y="5" width="2" height="3" fill="#f0a3a2"/>
+      <rect x="13" y="8" width="7" height="4" fill="#f6c18d"/>
+    </g>
+
+    <g id="feet-even">
+      <rect x="10" y="24" width="6" height="5" fill="#5a4235"/>
+      <rect x="17" y="24" width="6" height="5" fill="#5a4235"/>
+      <rect x="11" y="24" width="4" height="4" fill="#ffe0bf"/>
+      <rect x="18" y="24" width="4" height="4" fill="#ffe0bf"/>
+    </g>
+    <g id="feet-a">
+      <rect x="8" y="23" width="6" height="6" fill="#5a4235"/>
+      <rect x="18" y="25" width="6" height="4" fill="#5a4235"/>
+      <rect x="9" y="24" width="4" height="4" fill="#ffe0bf"/>
+      <rect x="19" y="25" width="4" height="3" fill="#ffe0bf"/>
+    </g>
+    <g id="feet-b">
+      <rect x="9" y="25" width="6" height="4" fill="#5a4235"/>
+      <rect x="20" y="23" width="6" height="6" fill="#5a4235"/>
+      <rect x="10" y="25" width="4" height="3" fill="#ffe0bf"/>
+      <rect x="21" y="24" width="4" height="4" fill="#ffe0bf"/>
+    </g>
+  </defs>
+
+  <!-- down: idle, left step, middle, right step -->
+  <g transform="translate(0 0)"><use xlink:href="#front"/><use xlink:href="#feet-even"/></g>
+  <g transform="translate(32 1)"><use xlink:href="#front"/><use xlink:href="#feet-a"/></g>
+  <g transform="translate(64 0)"><use xlink:href="#front"/><use xlink:href="#feet-even"/></g>
+  <g transform="translate(96 1)"><use xlink:href="#front"/><use xlink:href="#feet-b"/></g>
+
+  <!-- left: mirrored side cycle -->
+  <g transform="translate(32 32) scale(-1 1)"><use xlink:href="#side-right"/><use xlink:href="#feet-even"/></g>
+  <g transform="translate(64 33) scale(-1 1)"><use xlink:href="#side-right"/><use xlink:href="#feet-a"/></g>
+  <g transform="translate(96 32) scale(-1 1)"><use xlink:href="#side-right"/><use xlink:href="#feet-even"/></g>
+  <g transform="translate(128 33) scale(-1 1)"><use xlink:href="#side-right"/><use xlink:href="#feet-b"/></g>
+
+  <!-- right -->
+  <g transform="translate(0 64)"><use xlink:href="#side-right"/><use xlink:href="#feet-even"/></g>
+  <g transform="translate(32 65)"><use xlink:href="#side-right"/><use xlink:href="#feet-a"/></g>
+  <g transform="translate(64 64)"><use xlink:href="#side-right"/><use xlink:href="#feet-even"/></g>
+  <g transform="translate(96 65)"><use xlink:href="#side-right"/><use xlink:href="#feet-b"/></g>
+
+  <!-- up -->
+  <g transform="translate(0 96)"><use xlink:href="#back"/><use xlink:href="#feet-even"/></g>
+  <g transform="translate(32 97)"><use xlink:href="#back"/><use xlink:href="#feet-a"/></g>
+  <g transform="translate(64 96)"><use xlink:href="#back"/><use xlink:href="#feet-even"/></g>
+  <g transform="translate(96 97)"><use xlink:href="#back"/><use xlink:href="#feet-b"/></g>
+</svg>

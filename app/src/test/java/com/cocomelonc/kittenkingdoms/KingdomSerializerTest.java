@@ -38,6 +38,10 @@ public final class KingdomSerializerTest {
         original.explored = new boolean[WorldMap.SIZE][WorldMap.SIZE];
         original.explored[48][48] = true;
         original.explored[10][20] = true;
+        original.diplomaticRelations = new int[]{31, 42, 53, 64};
+        original.envoyTurns = new int[]{0, 1, 2, 0};
+        original.courierTurns = new int[]{1, 0, 0, 1};
+        original.tradeRoutes = new boolean[]{true, false, true, false};
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         KingdomSerializer.write(original, out);
@@ -58,6 +62,10 @@ public final class KingdomSerializerTest {
         for (int row = 0; row < WorldMap.SIZE; row++) {
             assertArrayEquals(original.explored[row], restored.explored[row]);
         }
+        assertArrayEquals(original.diplomaticRelations, restored.diplomaticRelations);
+        assertArrayEquals(original.envoyTurns, restored.envoyTurns);
+        assertArrayEquals(original.courierTurns, restored.courierTurns);
+        assertArrayEquals(original.tradeRoutes, restored.tradeRoutes);
     }
 
     @Test
@@ -72,5 +80,32 @@ public final class KingdomSerializerTest {
     public void truncatedStreamFailsCleanlyRatherThanCrashing() {
         byte[] truncated = new byte[]{0, 0, 0, 2};
         assertThrows(IOException.class, () -> KingdomSerializer.read(new ByteArrayInputStream(truncated)));
+    }
+
+    @Test
+    public void versionTwoSaveMigratesWithFreshDiplomacy() throws IOException {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        DataOutputStream out = new DataOutputStream(bytes);
+        out.writeInt(2);
+        out.writeInt(7);
+        out.writeInt(WorldMap.START_ROW);
+        out.writeInt(WorldMap.START_COL);
+        out.writeInt(2);
+        out.writeInt(0);
+        out.writeInt(TechNode.NONE);
+        out.writeInt(0);
+        for (int resource = 0; resource < ResourceType.COUNT; resource++) {
+            out.writeInt(0);
+        }
+        out.writeInt(0);
+        out.write(new byte[(WorldMap.SIZE * WorldMap.SIZE + 7) / 8]);
+
+        KingdomSaveData migrated = KingdomSerializer.read(
+                new ByteArrayInputStream(bytes.toByteArray()));
+        KingdomWorld world = new KingdomWorld(null);
+        world.continueKingdom(migrated);
+
+        assertEquals(7, world.getTurn());
+        assertEquals(18, world.getRelation(Settlement.RIVERWHISKER));
     }
 }

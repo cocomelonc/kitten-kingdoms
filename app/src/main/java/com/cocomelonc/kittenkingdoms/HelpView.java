@@ -20,7 +20,7 @@ import android.view.View;
 import java.util.Locale;
 
 /**
- * A single static "how to play" card: three short sections (Explore, Build, Research), no
+ * A single static "how to play" card: four short sections, no
  * pagination or scrolling since each section is intentionally kept to two short lines.
  */
 @SuppressLint("ViewConstructor")
@@ -100,13 +100,15 @@ final class HelpView extends View {
         drawFittedText(canvas, text(R.string.how_to_play), (CARD_LEFT + CARD_RIGHT) / 2f, CARD_TOP + 66f,
                 38f, CARD_RIGHT - CARD_LEFT - 120f, 0xFF443C2E, true);
 
-        float columnWidth = (CARD_RIGHT - CARD_LEFT) / 3f;
+        float columnWidth = (CARD_RIGHT - CARD_LEFT) / 4f;
         drawSection(canvas, 0, CARD_LEFT + columnWidth * 0.5f,
                 R.string.help_explore_heading, R.string.help_explore_line1, R.string.help_explore_line2);
         drawSection(canvas, 1, CARD_LEFT + columnWidth * 1.5f,
                 R.string.help_build_heading, R.string.help_build_line1, R.string.help_build_line2);
         drawSection(canvas, 2, CARD_LEFT + columnWidth * 2.5f,
                 R.string.help_research_heading, R.string.help_research_line1, R.string.help_research_line2);
+        drawSection(canvas, 3, CARD_LEFT + columnWidth * 3.5f,
+                R.string.help_diplomacy_heading, R.string.help_diplomacy_line1, R.string.help_diplomacy_line2);
 
         drawPill(canvas, (CARD_LEFT + CARD_RIGHT) / 2f - 100f, CARD_BOTTOM - 76f,
                 (CARD_LEFT + CARD_RIGHT) / 2f + 100f, CARD_BOTTOM - 32f, 0xFFE9DDCB, 0x1E443C2E);
@@ -120,7 +122,7 @@ final class HelpView extends View {
         canvas.drawCircle(cx, iconCy, 40f, paint);
         drawSectionGlyph(canvas, glyph, cx, iconCy);
 
-        float columnWidth = (CARD_RIGHT - CARD_LEFT) / 3f - 48f;
+        float columnWidth = (CARD_RIGHT - CARD_LEFT) / 4f - 32f;
         drawFittedText(canvas, text(headingRes), cx, iconCy + 76f, 24f, columnWidth, 0xFF443C2E, true);
         drawFittedText(canvas, text(line1Res), cx, iconCy + 116f, 17f, columnWidth, 0xFF6B6250, false);
         drawFittedText(canvas, text(line2Res), cx, iconCy + 142f, 17f, columnWidth, 0xFF6B6250, false);
@@ -146,6 +148,16 @@ final class HelpView extends View {
             case 2:
                 canvas.drawCircle(cx, cy - 4f, 13f, paint);
                 canvas.drawRoundRect(cx - 5f, cy + 8f, cx + 5f, cy + 17f, 2f, 2f, paint);
+                break;
+            case 3:
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(4f);
+                canvas.drawLine(cx - 18f, cy + 10f, cx, cy - 12f, paint);
+                canvas.drawLine(cx, cy - 12f, cx + 18f, cy + 10f, paint);
+                paint.setStyle(Paint.Style.FILL);
+                canvas.drawCircle(cx - 18f, cy + 10f, 7f, paint);
+                canvas.drawCircle(cx, cy - 12f, 7f, paint);
+                canvas.drawCircle(cx + 18f, cy + 10f, 7f, paint);
                 break;
             default:
                 break;

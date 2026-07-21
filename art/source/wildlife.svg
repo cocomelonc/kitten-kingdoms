@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Author: cocomelonc; Copyright (c) 2026; SPDX-License-Identifier: MIT -->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="64" height="128" viewBox="0 0 64 128" shape-rendering="crispEdges">
+  <defs>
+    <g id="hedgehog">
+      <path d="M3 20V12h3V8h4V5h4v3h4V5h4v4h4v4h3v11H7v-4z" fill="#5a4235"/>
+      <path d="M6 20v-7h3V9h4v3h5V9h4v5h4v8H8v-2z" fill="#8f6b4d"/>
+      <rect x="18" y="13" width="11" height="10" fill="#f2d6ad"/>
+      <rect x="22" y="15" width="3" height="3" fill="#3f3a38"/>
+      <rect x="27" y="18" width="4" height="3" fill="#3f3a38"/>
+      <rect x="10" y="23" width="5" height="4" fill="#5a4235"/>
+      <rect x="21" y="23" width="5" height="4" fill="#5a4235"/>
+    </g>
+    <g id="rabbit">
+      <rect x="8" y="4" width="6" height="13" fill="#5a4235"/>
+      <rect x="19" y="2" width="6" height="15" fill="#5a4235"/>
+      <rect x="10" y="5" width="2" height="10" fill="#efa8b5"/>
+      <rect x="21" y="4" width="2" height="11" fill="#efa8b5"/>
+      <rect x="6" y="12" width="21" height="13" fill="#5a4235"/>
+      <rect x="8" y="13" width="17" height="11" fill="#eee8dc"/>
+      <rect x="3" y="17" width="7" height="7" fill="#fff9ec"/>
+      <rect x="18" y="16" width="3" height="3" fill="#3f3a38"/>
+      <rect x="24" y="19" width="4" height="3" fill="#c97584"/>
+      <rect x="9" y="23" width="6" height="5" fill="#5a4235"/>
+      <rect x="20" y="23" width="7" height="5" fill="#5a4235"/>
+    </g>
+    <g id="duck">
+      <rect x="5" y="13" width="20" height="12" fill="#5a4235"/>
+      <rect x="7" y="14" width="16" height="10" fill="#f2c94e"/>
+      <rect x="17" y="7" width="11" height="13" fill="#5a4235"/>
+      <rect x="18" y="8" width="9" height="11" fill="#f5d45d"/>
+      <rect x="22" y="11" width="3" height="3" fill="#3f3a38"/>
+      <rect x="27" y="14" width="5" height="4" fill="#df873d"/>
+      <rect x="8" y="17" width="10" height="5" fill="#dfac3e"/>
+      <rect x="10" y="24" width="5" height="3" fill="#df873d"/>
+      <rect x="20" y="24" width="5" height="3" fill="#df873d"/>
+    </g>
+    <g id="bee">
+      <rect x="5" y="8" width="9" height="8" fill="#dff5f1"/>
+      <rect x="18" y="6" width="9" height="9" fill="#dff5f1"/>
+      <rect x="7" y="12" width="19" height="13" fill="#5a4235"/>
+      <rect x="9" y="14" width="15" height="9" fill="#f1c548"/>
+      <rect x="13" y="14" width="3" height="9" fill="#5a4235"/>
+      <rect x="20" y="14" width="3" height="9" fill="#5a4235"/>
+      <rect x="10" y="17" width="2" height="2" fill="#3f3a38"/>
+      <rect x="9" y="9" width="2" height="4" fill="#5a4235"/>
+      <rect x="22" y="8" width="2" height="5" fill="#5a4235"/>
+    </g>
+  </defs>
+  <g transform="translate(0 0)"><use xlink:href="#hedgehog"/></g>
+  <g transform="translate(32 1)"><use xlink:href="#hedgehog"/></g>
+  <g transform="translate(0 32)"><use xlink:href="#rabbit"/></g>
+  <g transform="translate(32 33)"><use xlink:href="#rabbit"/></g>
+  <g transform="translate(0 64)"><use xlink:href="#duck"/></g>
+  <g transform="translate(32 65)"><use xlink:href="#duck"/></g>
+  <g transform="translate(0 96)"><use xlink:href="#bee"/></g>
+  <g transform="translate(32 94)"><use xlink:href="#bee"/></g>
+</svg>

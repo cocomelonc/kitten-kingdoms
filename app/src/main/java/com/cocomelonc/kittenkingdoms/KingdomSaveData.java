@@ -23,4 +23,8 @@ final class KingdomSaveData {
     int[] resources;
     List<int[]> buildings;
     boolean[][] explored;
+    int[] diplomaticRelations;
+    int[] envoyTurns;
+    int[] courierTurns;
+    boolean[] tradeRoutes;
 }
