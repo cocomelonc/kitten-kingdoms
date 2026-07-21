@@ -2,7 +2,7 @@
 
 ## original author and copyright holder
 
-**cocomelonc** (Zhassulan Zhussupov) - concept, game design, source code, procedural artwork, localization, and original project direction.
+**cocomelonc** (Zhassulan Zhussupov) - concept, game design, source code, most artwork (procedural, generated at runtime), localization, and original project direction. See [ART.md](ART.md) for the small set of third-party CC0 terrain tiles.
 
 Copyright © 2026 cocomelonc (Zhassulan Zhussupov).
 

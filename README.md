@@ -91,6 +91,9 @@ economy, just so the kingdom doesn't feel empty.
 - English and Russian resources bundled in every APK/AAB.
 - Original procedural chimes and calm background music; no sampled audio
   files or codec dependency.
+- Almost everything on screen is still vector art drawn at runtime; the one
+  exception is a small set of CC0-licensed terrain tiles and building badges
+  (trees, rocks, shoreline, three building icons) - see [ART.md](ART.md).
 
 ### Android configuration
 
@@ -200,7 +203,7 @@ app/src/main/java/com/cocomelonc/kittenkingdoms/
   MainActivity.java       edge-to-edge Android host, lifecycle, and activity-result glue
   KittenKingdomsView.java camera, tile culling, HUD, main menu, Build modal, and input
   TechTreeActivity.java   hosts the Research screen, returns the chosen tech via Intent
-  TechTreeView.java       the nine-node technology DAG, rendered full screen
+  TechTreeView.java       the ten-node technology DAG, rendered full screen
   HelpActivity.java       hosts the static "How to Play" screen
   HelpView.java           three short Explore/Build/Research sections, no scrolling
   KingdomWorld.java       turn-based rules, kitten pathing, save/load glue
@@ -211,14 +214,17 @@ app/src/main/java/com/cocomelonc/kittenkingdoms/
   TechNode.java           data-driven technology tree (a DAG, not a line)
   PlacedBuilding.java     mutable building-instance placement state
   WildlifeCritter.java    decorative background creature: no AI, just wanders
+  TerrainSprites.java     loads/caches the CC0 terrain tiles and building badges
   TurnMath.java           stateless per-turn economy formulas
   KingdomSaveData.java    plain save/load transfer object
   KingdomSerializer.java  zero-dependency versioned binary save format
   AudioEngine.java        tiny procedural chime synthesizer
   MusicEngine.java        calm original procedural background music
+app/src/main/res/drawable-nodpi/  third-party CC0 terrain tiles and building badges
 app/src/test/             registry, reachability, economy, and save-format tests
 art/                      open-source cover and its generation notes
 third_party/nunito/       exact SIL OFL license for the bundled font
+third_party/kenney/       exact CC0 license for the terrain/building tiles
 scripts/                  reproducible Android verification
 ```
 
@@ -233,8 +239,9 @@ Google Play Families answers must be updated.
 
 Project source and original project artwork are available under the MIT
 License. The original sound effects and music are documented in
-[AUDIO.md](AUDIO.md). Nunito remains under the SIL Open Font License 1.1; see
-[`third_party/nunito/OFL.txt`](third_party/nunito/OFL.txt).
+[AUDIO.md](AUDIO.md); the small set of third-party CC0 terrain tiles is
+documented in [ART.md](ART.md). Nunito remains under the SIL Open Font
+License 1.1; see [`third_party/nunito/OFL.txt`](third_party/nunito/OFL.txt).
 
 Kitten Kingdoms was created by **cocomelonc**. The author and copyright notices
 must remain in copies and substantial portions of the project as required by

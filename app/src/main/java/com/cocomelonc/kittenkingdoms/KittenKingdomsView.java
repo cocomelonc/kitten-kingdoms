@@ -11,6 +11,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.LinearGradient;
@@ -81,8 +82,10 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     private static final String SAVE_FILE_NAME = "kingdom.sav";
 
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
+    private final Paint spritePaint = new Paint(Paint.FILTER_BITMAP_FLAG);
     private final Path path = new Path();
     private final RectF rect = new RectF();
+    private final TerrainSprites sprites;
     private final android.graphics.Typeface regular;
     private final android.graphics.Typeface bold;
     private final SharedPreferences preferences;
@@ -144,6 +147,7 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         android.graphics.Typeface font = context.getResources().getFont(R.font.nunito);
         regular = android.graphics.Typeface.create(font, android.graphics.Typeface.NORMAL);
         bold = android.graphics.Typeface.create(font, android.graphics.Typeface.BOLD);
+        sprites = new TerrainSprites(context.getResources());
         setContentDescription(text(R.string.accessibility_game));
 
         saveFile = new File(context.getFilesDir(), SAVE_FILE_NAME);
@@ -401,6 +405,27 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
             float dotY = top + 16f + Math.floorMod(seedValue * 3, 32);
             canvas.drawCircle(dotX, dotY, 2.4f, paint);
         }
+
+        if (terrainId == TerrainType.WATER) {
+            Bitmap waterBitmap = sprites.waterBitmapFor(map, row, col);
+            if (waterBitmap != null) {
+                canvas.drawBitmap(waterBitmap, left, top, spritePaint);
+            }
+            Bitmap lily = sprites.waterLilyFor(seedValue);
+            if (lily != null) {
+                float lilySize = TILE * 0.5f;
+                canvas.drawBitmap(lily, null,
+                        new RectF(left + (TILE - lilySize) / 2f, top + (TILE - lilySize) / 2f,
+                                left + (TILE + lilySize) / 2f, top + (TILE + lilySize) / 2f),
+                        spritePaint);
+            }
+        } else {
+            Bitmap prop = sprites.propFor(terrainId, seedValue);
+            if (prop != null) {
+                canvas.drawBitmap(prop, left + (TILE - prop.getWidth()) / 2f, top + TILE - prop.getHeight(),
+                        spritePaint);
+            }
+        }
     }
 
     private void drawBuildingToken(Canvas canvas, int typeId, float cx, float cy, boolean underConstruction, float time) {
@@ -454,6 +479,8 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
                 return 0xFF7C8FC1;
             case BuildingType.COZY_PLAZA:
                 return 0xFFE9B65C;
+            case BuildingType.CRYSTAL_MINE:
+                return 0xFF8E7CD8;
             default:
                 return 0xFFAAAAAA;
         }
@@ -465,21 +492,41 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
             case BuildingType.TOWN_HALL:
                 path.reset();
                 path.moveTo(cx - 12f, cy + 10f);
-                path.lineTo(cx, cy - 12f);
+                path.lineTo(cx, cy - 10f);
                 path.lineTo(cx + 12f, cy + 10f);
                 path.close();
                 canvas.drawPath(path, paint);
+                path.reset();
+                path.moveTo(cx + 0.5f, cy - 16f);
+                path.lineTo(cx + 7f, cy - 13f);
+                path.lineTo(cx + 0.5f, cy - 10f);
+                path.close();
+                canvas.drawPath(path, paint);
+                paint.setColor(buildingAccentColor(typeId));
+                canvas.drawRoundRect(cx - 3f, cy + 2f, cx + 3f, cy + 10f, 1f, 1f, paint);
                 break;
             case BuildingType.FISHING_DOCK:
-                canvas.drawArc(cx - 12f, cy - 4f, cx + 12f, cy + 10f, 200f, 140f, false, paint);
+                path.reset();
+                path.moveTo(cx - 10f, cy);
+                path.quadTo(cx - 2f, cy - 8f, cx + 8f, cy - 3f);
+                path.quadTo(cx + 2f, cy, cx + 8f, cy + 3f);
+                path.quadTo(cx - 2f, cy + 8f, cx - 10f, cy);
+                path.close();
+                canvas.drawPath(path, paint);
+                path.reset();
+                path.moveTo(cx - 10f, cy);
+                path.lineTo(cx - 16f, cy - 5f);
+                path.lineTo(cx - 16f, cy + 5f);
+                path.close();
+                canvas.drawPath(path, paint);
+                paint.setColor(buildingAccentColor(typeId));
+                canvas.drawCircle(cx + 3f, cy - 2f, 1.2f, paint);
                 break;
             case BuildingType.LUMBER_CAMP:
-                canvas.drawRoundRect(cx - 5f, cy - 4f, cx + 5f, cy + 12f, 2f, 2f, paint);
-                canvas.drawCircle(cx, cy - 8f, 8f, paint);
+                drawBadgeBitmap(canvas, sprites.lumberCampBadge, cx, cy);
                 break;
             case BuildingType.QUARRY:
-                canvas.drawCircle(cx - 6f, cy + 4f, 7f, paint);
-                canvas.drawCircle(cx + 7f, cy, 9f, paint);
+                drawBadgeBitmap(canvas, sprites.quarryBadge, cx, cy);
                 break;
             case BuildingType.CATNIP_FARM:
                 canvas.drawOval(cx - 4f, cy - 12f, cx + 4f, cy + 6f, paint);
@@ -487,25 +534,56 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
                 canvas.drawOval(cx + 2f, cy - 2f, cx + 12f, cy + 8f, paint);
                 break;
             case BuildingType.WEAVERS_COTTAGE:
-                canvas.drawCircle(cx, cy, 9f, paint);
-                paint.setColor(0xFFD88FB0);
-                canvas.drawCircle(cx, cy, 4f, paint);
+                path.reset();
+                boolean firstSpiralPoint = true;
+                for (int i = 0; i <= 24; i++) {
+                    double angle = i * 0.5;
+                    float spiralRadius = 9f * (1f - i / 30f);
+                    float x = cx + (float) Math.cos(angle) * spiralRadius;
+                    float y = cy + (float) Math.sin(angle) * spiralRadius;
+                    if (firstSpiralPoint) {
+                        path.moveTo(x, y);
+                        firstSpiralPoint = false;
+                    } else {
+                        path.lineTo(x, y);
+                    }
+                }
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(2.2f);
+                paint.setStrokeCap(Paint.Cap.ROUND);
+                canvas.drawPath(path, paint);
+                paint.setStyle(Paint.Style.FILL);
                 break;
             case BuildingType.KITTEN_COTTAGE:
                 path.reset();
-                path.moveTo(cx - 11f, cy + 9f);
-                path.lineTo(cx, cy - 11f);
-                path.lineTo(cx + 11f, cy + 9f);
+                path.moveTo(cx - 9f, cy + 4f);
+                path.lineTo(cx, cy - 10f);
+                path.lineTo(cx + 9f, cy + 4f);
+                path.close();
+                canvas.drawPath(path, paint);
+                path.reset();
+                path.moveTo(cx - 6f, cy + 9f);
+                path.cubicTo(cx - 9f, cy + 4f, cx - 2f, cy + 3f, cx, cy + 7f);
+                path.cubicTo(cx + 2f, cy + 3f, cx + 9f, cy + 4f, cx + 6f, cy + 9f);
+                path.lineTo(cx, cy + 14f);
                 path.close();
                 canvas.drawPath(path, paint);
                 break;
             case BuildingType.STORAGE_BARN:
                 canvas.drawRoundRect(cx - 10f, cy - 8f, cx + 10f, cy + 11f, 3f, 3f, paint);
+                paint.setColor(buildingAccentColor(typeId));
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(2f);
+                canvas.drawLine(cx - 9f, cy - 7f, cx + 9f, cy + 10f, paint);
+                canvas.drawLine(cx + 9f, cy - 7f, cx - 9f, cy + 10f, paint);
+                paint.setStyle(Paint.Style.FILL);
                 break;
             case BuildingType.SCHOLARS_DEN:
                 canvas.drawRoundRect(cx - 10f, cy - 8f, cx + 10f, cy + 9f, 2f, 2f, paint);
-                paint.setColor(0xFF7C8FC1);
-                canvas.drawLine(cx, cy - 6f, cx, cy + 7f, paint);
+                paint.setColor(buildingAccentColor(typeId));
+                canvas.drawLine(cx, cy - 7f, cx, cy + 8f, paint);
+                canvas.drawLine(cx - 9f, cy - 7f, cx, cy - 2f, paint);
+                canvas.drawLine(cx + 9f, cy - 7f, cx, cy - 2f, paint);
                 break;
             case BuildingType.COZY_PLAZA:
                 canvas.drawCircle(cx, cy, 3f, paint);
@@ -514,9 +592,16 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
                     canvas.drawCircle(cx + (float) Math.cos(angle) * 9f, cy + (float) Math.sin(angle) * 9f, 2.2f, paint);
                 }
                 break;
+            case BuildingType.CRYSTAL_MINE:
+                drawBadgeBitmap(canvas, sprites.crystalMineBadge, cx, cy);
+                break;
             default:
                 break;
         }
+    }
+
+    private void drawBadgeBitmap(Canvas canvas, Bitmap bitmap, float cx, float cy) {
+        canvas.drawBitmap(bitmap, cx - bitmap.getWidth() / 2f, cy - bitmap.getHeight() / 2f, spritePaint);
     }
 
     private void drawGridOverlayIfPlacing(Canvas canvas) {
