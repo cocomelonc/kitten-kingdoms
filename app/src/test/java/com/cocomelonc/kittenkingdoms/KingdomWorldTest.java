@@ -100,6 +100,19 @@ public final class KingdomWorldTest {
     }
 
     @Test
+    public void techUnlockedBitsMatchesTheUnlockedTechAfterResearch() {
+        KingdomWorld world = new KingdomWorld(null);
+        world.beginNewKingdom();
+        assertEquals(0, world.getTechUnlockedBits());
+
+        world.selectActiveTech(TechNode.BASIC_TOOLS);
+        advanceTurns(world, 5);
+
+        assertTrue(world.isTechUnlocked(TechNode.BASIC_TOOLS));
+        assertEquals(1 << TechNode.BASIC_TOOLS, world.getTechUnlockedBits());
+    }
+
+    @Test
     public void completedBuildingProducesResourcesOnEndTurn() {
         KingdomWorld world = new KingdomWorld(null);
         world.beginNewKingdom();

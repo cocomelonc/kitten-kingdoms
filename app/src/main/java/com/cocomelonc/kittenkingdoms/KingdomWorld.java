@@ -296,10 +296,8 @@ final class KingdomWorld {
         if (techId < 0 || techId >= TechNode.COUNT || techUnlocked[techId]) {
             return false;
         }
-        for (int prereq : techNodes[techId].prerequisites) {
-            if (!techUnlocked[prereq]) {
-                return false;
-            }
+        if (!TechNode.prerequisitesMet(techNodes[techId], techUnlocked)) {
+            return false;
         }
         activeTechId = techId;
         return true;
@@ -470,6 +468,11 @@ final class KingdomWorld {
 
     boolean isTechUnlocked(int techId) {
         return techUnlocked[techId];
+    }
+
+    /** Packed for handing tech progress to {@code TechTreeActivity} via an Intent extra. */
+    int getTechUnlockedBits() {
+        return KingdomSerializer.packTechBits(techUnlocked);
     }
 
     int getPendingBuildingTypeId() {

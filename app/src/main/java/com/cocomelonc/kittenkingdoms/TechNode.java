@@ -83,6 +83,16 @@ final class TechNode {
         return all;
     }
 
+    /** Single source of truth for "is this node selectable now", shared by world logic and UI. */
+    static boolean prerequisitesMet(TechNode node, boolean[] unlocked) {
+        for (int prereq : node.prerequisites) {
+            if (!unlocked[prereq]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private static TechNode basicTools() {
         return new TechNode(BASIC_TOOLS, R.string.tech_basic_tools, 5, new int[]{},
                 BuildingType.NONE, ResourceType.NONE, 0, 0);

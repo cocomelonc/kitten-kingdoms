@@ -3,8 +3,14 @@
     <string name="app_name">Kitten Kingdoms</string>
     <string name="game_title">Kitten Kingdoms</string>
     <string name="game_subtitle">A tiny kingdom grows one gentle turn at a time</string>
-    <string name="touch_to_begin">Touch to begin</string>
-    <string name="continue_kingdom">Continue your kingdom</string>
+    <string name="continue_kingdom">Continue</string>
+    <string name="new_kingdom">New Kingdom</string>
+    <string name="how_to_play">How to Play</string>
+    <string name="main_menu">Main Menu</string>
+    <string name="confirm_new_kingdom_title">Start a new kingdom?</string>
+    <string name="confirm_new_kingdom_body">Your saved kingdom will be replaced.</string>
+    <string name="confirm">Confirm</string>
+    <string name="back_button">Back</string>
     <string name="tap_to_explore">Tap a tile to walk, or drag and pinch to look around</string>
     <string name="build_hint">Open Build to place a building on discovered land</string>
     <string name="paused">A tiny pause</string>
@@ -16,6 +22,17 @@
     <string name="tech_tree_title">Research</string>
     <string name="tech_points_label">Tech points</string>
     <string name="cancel">Cancel</string>
+    <string name="got_it">Got it</string>
+
+    <string name="help_explore_heading">Explore</string>
+    <string name="help_explore_line1">Drag to look around, pinch to zoom, tap a tile to walk.</string>
+    <string name="help_explore_line2">Land stays discovered forever once you\'ve seen it.</string>
+    <string name="help_build_heading">Build</string>
+    <string name="help_build_line1">Open Build and choose what you can afford.</string>
+    <string name="help_build_line2">Some buildings need water, forest, or stone nearby.</string>
+    <string name="help_research_heading">Research</string>
+    <string name="help_research_line1">Tech points build up every turn from your Town Hall.</string>
+    <string name="help_research_line2">Pick a technology to unlock new buildings and yields.</string>
 
     <string name="resource_fish">Fish</string>
     <string name="resource_wood">Wood</string>

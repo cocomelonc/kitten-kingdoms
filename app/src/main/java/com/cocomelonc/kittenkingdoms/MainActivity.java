@@ -7,6 +7,7 @@
 package com.cocomelonc.kittenkingdoms;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
@@ -60,6 +61,17 @@ public final class MainActivity extends Activity {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
             enterImmersiveMode();
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == TechTreeActivity.REQUEST_CODE && resultCode == RESULT_OK
+                && data != null && gameView != null) {
+            int selectedTechId = data.getIntExtra(TechTreeActivity.EXTRA_SELECTED_TECH, TechNode.NONE);
+            gameView.applyTechSelection(selectedTechId);
         }
     }
 

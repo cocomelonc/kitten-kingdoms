@@ -29,8 +29,9 @@ placed on any discovered tile once you can afford them.
 
 ![World view with fog of war and a building under construction](art/runtime-level.png)
 
-Build Menu and Research screens are full-width modal cards, reusing the same
-rounded-card language as the pause screen:
+Build Menu is a modal card over the world; Research and How to Play are their
+own full screens (real Android Activities, so the system Back gesture returns
+you to the kingdom exactly as it left it):
 
 ![Build menu with buildable, locked, and unaffordable buildings](art/runtime-build-menu.png)
 ![Research screen showing the nine-node technology DAG](art/runtime-tech-tree.png)
@@ -56,9 +57,10 @@ The pause card uses the same EN/RU switch as every other screen:
   as there's enough Fish; if there isn't, growth just pauses — it never
   reverses.
 - **Research**: tech points accumulate every turn from the Town Hall and any
-  Scholar's Dens. Pick a target node in the nine-node technology tree; once
-  enough points have banked, it unlocks and any leftover points carry to the
-  next choice.
+  Scholar's Dens. Opening *Research* leaves the world view for its own screen
+  showing the nine-node technology tree; pick a target node and once enough
+  points have banked, it unlocks and any leftover points carry to the next
+  choice. The system Back gesture/button returns you to the kingdom.
 - **End Turn**: the whole economy — production, upkeep, population, and
   research — advances only when you tap *End Turn*. Exploration and building
   placement happen anytime in between, independent of the turn clock.
@@ -105,14 +107,16 @@ TIRAMISU` and the splash-screen API is available unconditionally, so
 [`<uses-sdk>` documentation](https://developer.android.com/guide/topics/manifest/uses-sdk-element).
 
 The complete debug build was clean-installed and exercised on a Pixel 7
-emulator running Android 16/API 36: English and Russian switching, Cyrillic
-font rendering, camera pan and zoom, tap-to-walk pathing, fog-of-war reveal,
-building placement (including tech-gated and terrain-adjacency-gated
-rejection), turn resolution and resource production, technology selection
-and unlocking, save-on-background and continue-on-relaunch, app backgrounding,
-and safe resume-to-pause. Automated tests also prove full terrain
-connectivity from the starting tile and that the technology tree is a valid,
-fully reachable, acyclic graph.
+emulator running Android 16/API 36: English and Russian switching (including
+across `TechTreeActivity` and `HelpActivity`), Cyrillic font rendering, camera
+pan and zoom, tap-to-walk pathing, fog-of-war reveal, building placement
+(including tech-gated and terrain-adjacency-gated rejection), turn resolution
+and resource production, opening Research as its own Activity and returning
+the chosen technology via `onActivityResult`, the New Kingdom confirmation
+when a save already exists, save-on-background and continue-on-relaunch, app
+backgrounding, and safe resume-to-pause. Automated tests also prove full
+terrain connectivity from the starting tile and that the technology tree is a
+valid, fully reachable, acyclic graph.
 
 ### Build
 
@@ -159,24 +163,31 @@ save format through a byte stream.
 
 ### Controls
 
+- Main menu: *Continue* (once a kingdom exists), *New Kingdom* (confirms
+  before replacing a saved kingdom), and *How to Play*.
 - Drag: pan the map. Pinch: zoom, from 0.6x to 1.8x.
 - Tap a tile with no building selected: the kitten walks there.
 - Tap *Build*, choose a building, then tap any discovered, eligible tile to
   place it.
-- Tap *Research*, then an available (non-greyed) node to set it as the active
-  research target.
+- Tap *Research* to open the technology screen, then an available
+  (non-greyed) node to set it as the active research target; Back returns to
+  the kingdom.
 - Tap *End Turn* to resolve production, upkeep, population growth, and
   research for the whole kingdom.
-- Top-right pause button or Android Back: pause (or cancel a build/menu
-  selection first, if one is open).
+- Top-right pause button or Android Back: pause (or cancel a build selection
+  first, if one is open). Pause also offers a *Main Menu* button.
 - `EN / RU`: switch language on the title or pause screen.
 
 ### Project layout
 
 ```text
 app/src/main/java/com/cocomelonc/kittenkingdoms/
-  MainActivity.java       edge-to-edge Android host and lifecycle
-  KittenKingdomsView.java camera, tile culling, HUD, modals, and input
+  MainActivity.java       edge-to-edge Android host, lifecycle, and activity-result glue
+  KittenKingdomsView.java camera, tile culling, HUD, main menu, Build modal, and input
+  TechTreeActivity.java   hosts the Research screen, returns the chosen tech via Intent
+  TechTreeView.java       the nine-node technology DAG, rendered full screen
+  HelpActivity.java       hosts the static "How to Play" screen
+  HelpView.java           three short Explore/Build/Research sections, no scrolling
   KingdomWorld.java       turn-based rules, kitten pathing, save/load glue
   WorldMap.java           96x96 deterministic terrain, fog of war, occupancy
   TerrainType.java        data-driven terrain kinds (grass, forest, water, ...)

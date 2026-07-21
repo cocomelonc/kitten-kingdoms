@@ -6,7 +6,9 @@
  */
 package com.cocomelonc.kittenkingdoms;
 
+import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.graphics.Canvas;
@@ -40,8 +42,7 @@ import java.util.Random;
 final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     private enum Overlay {
         NONE,
-        BUILD_MENU,
-        TECH_TREE
+        BUILD_MENU
     }
 
     private static final float WORLD_WIDTH = 1280f;
@@ -66,9 +67,11 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     private static final float MODAL_TOP = 70f;
     private static final float MODAL_RIGHT = 1190f;
     private static final float MODAL_BOTTOM = 670f;
-    private static final int[] TECH_DEPTH = {0, 1, 1, 1, 1, 2, 2, 3, 4};
-    private static final int[] TECH_ROW_INDEX = {0, 0, 1, 2, 3, 0, 1, 0, 0};
-    private static final int[] TECH_ROW_COUNT = {1, 4, 2, 1, 1};
+    private static final float MENU_BTN_CX = 660f;
+    private static final float MENU_BTN_HALF_W = 190f;
+    private static final float MENU_BTN_HEIGHT = 54f;
+    private static final float MENU_BTN_GAP = 14f;
+    private static final float MENU_TOP = 226f;
     private static final String PREFS = "kitten_kingdoms_progress";
     private static final String PREF_LANGUAGE = "language";
     private static final String SAVE_FILE_NAME = "kingdom.sav";
@@ -110,6 +113,7 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     private KingdomWorld.State lastVisualState = KingdomWorld.State.TITLE;
     private float overlayProgress = 1f;
     private int completedBuildingsCount;
+    private boolean confirmingNewKingdom;
 
     KittenKingdomsView(Context context) {
         super(context);
@@ -218,19 +222,57 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         drawFittedText(canvas, text(R.string.game_subtitle), 660f, 198f,
                 24f, 760f, 0xFF74694F, false);
 
-        float pulse = 0.98f + 0.025f * (float) Math.sin(time * 2.6f);
-        canvas.save();
-        canvas.scale(pulse, pulse, 660f, 300f);
-        drawPill(canvas, 470f, 258f, 850f, 342f, 0xF7FDF8EC, 0x264A4234);
-        drawFittedText(canvas, text(hasSaveFile ? R.string.continue_kingdom : R.string.touch_to_begin),
-                660f, 310f, 27f, 350f, 0xFF564D3B, true);
-        canvas.restore();
+        float menuTop = MENU_TOP;
+        if (hasSaveFile) {
+            drawMenuButton(canvas, menuTop, text(R.string.continue_kingdom), true, time);
+            menuTop += MENU_BTN_HEIGHT + MENU_BTN_GAP;
+        }
+        drawMenuButton(canvas, menuTop, text(R.string.new_kingdom), !hasSaveFile, time);
+        menuTop += MENU_BTN_HEIGHT + MENU_BTN_GAP;
+        drawMenuButton(canvas, menuTop, text(R.string.how_to_play), false, time);
+        menuTop += MENU_BTN_HEIGHT + 36f;
 
-        drawFittedText(canvas, text(R.string.tap_to_explore), 660f, 388f,
-                20f, 700f, 0xE8635A44, false);
-        drawFittedText(canvas, text(R.string.build_hint), 660f, 418f,
-                20f, 700f, 0xE8635A44, false);
+        drawFittedText(canvas, text(R.string.tap_to_explore), 660f, menuTop,
+                19f, 700f, 0xE8635A44, false);
+        drawFittedText(canvas, text(R.string.build_hint), 660f, menuTop + 26f,
+                19f, 700f, 0xE8635A44, false);
         drawLanguageSwitch(canvas, 1150f, 56f);
+
+        if (confirmingNewKingdom) {
+            drawNewKingdomConfirm(canvas);
+        }
+    }
+
+    private void drawMenuButton(Canvas canvas, float top, String label, boolean emphasize, float time) {
+        float bottom = top + MENU_BTN_HEIGHT;
+        float cy = (top + bottom) / 2f;
+        if (emphasize) {
+            float pulse = 0.98f + 0.02f * (float) Math.sin(time * 2.6f);
+            canvas.save();
+            canvas.scale(pulse, pulse, MENU_BTN_CX, cy);
+            drawPill(canvas, MENU_BTN_CX - MENU_BTN_HALF_W, top, MENU_BTN_CX + MENU_BTN_HALF_W, bottom,
+                    0xF7FDF8EC, 0x264A4234);
+            drawFittedText(canvas, label, MENU_BTN_CX, cy + 9f, 26f, MENU_BTN_HALF_W * 1.7f, 0xFF564D3B, true);
+            canvas.restore();
+        } else {
+            drawPill(canvas, MENU_BTN_CX - MENU_BTN_HALF_W, top, MENU_BTN_CX + MENU_BTN_HALF_W, bottom,
+                    0xE8FDF8EC, 0x1E4A4234);
+            drawFittedText(canvas, label, MENU_BTN_CX, cy + 8f, 23f, MENU_BTN_HALF_W * 1.7f, 0xFF66604F, true);
+        }
+    }
+
+    private void drawNewKingdomConfirm(Canvas canvas) {
+        drawModalScrim(canvas);
+        paint.setColor(0x264A4234);
+        canvas.drawRoundRect(384f, 244f, 900f, 484f, 34f, 34f, paint);
+        paint.setColor(0xF8FDFAF0);
+        canvas.drawRoundRect(380f, 240f, 896f, 480f, 34f, 34f, paint);
+        drawFittedText(canvas, text(R.string.confirm_new_kingdom_title), 638f, 306f, 27f, 460f, 0xFF443C2E, true);
+        drawFittedText(canvas, text(R.string.confirm_new_kingdom_body), 638f, 352f, 18f, 460f, 0xFF74694F, false);
+        drawPill(canvas, 420f, 392f, 630f, 446f, 0xFFE9B65C, 0x1E443C2E);
+        drawFittedText(canvas, text(R.string.confirm), 525f, 426f, 19f, 190f, 0xFF443C2E, true);
+        drawPill(canvas, 650f, 392f, 860f, 446f, 0xFFE9DDCB, 0x1E443C2E);
+        drawFittedText(canvas, text(R.string.cancel), 755f, 426f, 19f, 190f, 0xFF443C2E, true);
     }
 
     private void drawPlaying(Canvas canvas, float time) {
@@ -255,8 +297,6 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
 
         if (activeOverlay == Overlay.BUILD_MENU) {
             drawBuildMenu(canvas);
-        } else if (activeOverlay == Overlay.TECH_TREE) {
-            drawTechTree(canvas);
         }
 
         if (world.getState() == KingdomWorld.State.PAUSED) {
@@ -575,94 +615,6 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         return builder.length() == 0 ? "" : builder.toString();
     }
 
-    private void drawTechTree(Canvas canvas) {
-        drawModalScrim(canvas);
-        drawModalCard(canvas);
-        drawFittedText(canvas, text(R.string.tech_tree_title) + "  ·  " + text(R.string.tech_points_label)
-                        + " " + world.getTechPointPool(),
-                (MODAL_LEFT + MODAL_RIGHT) / 2f, MODAL_TOP + 56f,
-                30f, MODAL_RIGHT - MODAL_LEFT - 100f, 0xFF443C2E, true);
-
-        float contentLeft = MODAL_LEFT + 90f;
-        float contentTop = MODAL_TOP + 100f;
-        float contentWidth = MODAL_RIGHT - MODAL_LEFT - 180f;
-        float contentHeight = MODAL_BOTTOM - MODAL_TOP - 180f;
-
-        TechNode[] techs = world.getTechNodes();
-        paint.setStyle(Paint.Style.STROKE);
-        paint.setStrokeWidth(2.2f);
-        paint.setColor(0x553E5C6B);
-        float edgeWaypointX = contentLeft + contentWidth + 30f;
-        for (TechNode node : techs) {
-            float nodeX = techNodeX(node.id, contentLeft, contentWidth);
-            float nodeY = techNodeY(node.id, contentTop, contentHeight);
-            for (int prereq : node.prerequisites) {
-                float prereqX = techNodeX(prereq, contentLeft, contentWidth);
-                float prereqY = techNodeY(prereq, contentTop, contentHeight);
-                int depthGap = Math.abs(TECH_DEPTH[node.id] - TECH_DEPTH[prereq]);
-                if (depthGap > 1) {
-                    // Route far-skipping edges around the outside so they never coincidentally
-                    // pass through an unrelated node sitting between the two depths.
-                    path.reset();
-                    path.moveTo(prereqX, prereqY);
-                    path.lineTo(edgeWaypointX, prereqY);
-                    path.lineTo(edgeWaypointX, nodeY);
-                    path.lineTo(nodeX, nodeY);
-                    canvas.drawPath(path, paint);
-                } else {
-                    canvas.drawLine(prereqX, prereqY, nodeX, nodeY, paint);
-                }
-            }
-        }
-        paint.setStyle(Paint.Style.FILL);
-
-        for (TechNode node : techs) {
-            float nodeX = techNodeX(node.id, contentLeft, contentWidth);
-            float nodeY = techNodeY(node.id, contentTop, contentHeight);
-            boolean unlocked = world.isTechUnlocked(node.id);
-            boolean available = !unlocked && prerequisitesMet(node, techs);
-            boolean active = node.id == world.getActiveTechId();
-            int fill = unlocked ? 0xFF8FC15C : (active ? 0xFFE9B65C : (available ? 0xFFFFFDF6 : 0xFFDCD6C6));
-            paint.setColor(fill);
-            canvas.drawCircle(nodeX, nodeY, 30f, paint);
-            paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(active ? 3.4f : 1.6f);
-            paint.setColor(available || active || unlocked ? 0xFF443C2E : 0x66443C2E);
-            canvas.drawCircle(nodeX, nodeY, 30f, paint);
-            paint.setStyle(Paint.Style.FILL);
-            drawFittedText(canvas, text(node.nameRes), nodeX, nodeY + 46f, 14f, contentWidth / TECH_ROW_COUNT[TECH_DEPTH[node.id]] - 8f,
-                    0xFF443C2E, active);
-            drawFittedText(canvas, String.valueOf(node.cost), nodeX, nodeY + 6f, 15f, 40f,
-                    unlocked ? 0xFFFFFFFF : 0xFF443C2E, true);
-        }
-
-        drawPill(canvas, (MODAL_LEFT + MODAL_RIGHT) / 2f - 90f, MODAL_BOTTOM - 60f,
-                (MODAL_LEFT + MODAL_RIGHT) / 2f + 90f, MODAL_BOTTOM - 20f, 0xFFE9DDCB, 0x1E443C2E);
-        drawFittedText(canvas, text(R.string.cancel), (MODAL_LEFT + MODAL_RIGHT) / 2f, MODAL_BOTTOM - 32f,
-                20f, 160f, 0xFF443C2E, true);
-    }
-
-    private boolean prerequisitesMet(TechNode node, TechNode[] techs) {
-        for (int prereq : node.prerequisites) {
-            if (!world.isTechUnlocked(prereq)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private float techNodeX(int techId, float left, float width) {
-        int row = TECH_DEPTH[techId];
-        int index = TECH_ROW_INDEX[techId];
-        int count = TECH_ROW_COUNT[row];
-        return left + (index + 0.5f) / count * width;
-    }
-
-    private float techNodeY(int techId, float top, float height) {
-        int row = TECH_DEPTH[techId];
-        return top + (row + 0.5f) / TECH_ROW_COUNT.length * height;
-    }
-
     private void drawModalScrim(Canvas canvas) {
         paint.setColor(0x8A4A4234);
         canvas.drawRect(0f, 0f, WORLD_WIDTH, WORLD_HEIGHT, paint);
@@ -691,6 +643,8 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         drawFittedText(canvas, text(R.string.paused), 640f, 300f, 36f, 600f, 0xFF443C2E, true);
         drawFittedText(canvas, text(R.string.touch_to_continue), 640f, 355f, 21f, 560f, 0xFF74694F, false);
         drawLanguageSwitch(canvas, 640f, 440f);
+        drawPill(canvas, 540f, 472f, 740f, 508f, 0xFFE9DDCB, 0x1A443C2E);
+        drawFittedText(canvas, text(R.string.main_menu), 640f, 496f, 18f, 180f, 0xFF443C2E, true);
         canvas.restoreToCount(layer);
     }
 
@@ -910,25 +864,66 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     }
 
     private void handleTitleTap(float logicalX, float logicalY) {
+        if (confirmingNewKingdom) {
+            handleNewKingdomConfirmTap(logicalX, logicalY);
+            return;
+        }
         if (isInsidePill(logicalX, logicalY, 1150f, 56f, 58f, 27f)) {
             toggleLanguage();
             return;
         }
+        float menuTop = MENU_TOP;
         if (hasSaveFile) {
-            loadAndContinue();
-        } else {
-            world.beginNewKingdom();
+            if (isInsideMenuButton(logicalX, logicalY, menuTop)) {
+                loadAndContinue();
+                centerCameraOnStart();
+                invalidate();
+                return;
+            }
+            menuTop += MENU_BTN_HEIGHT + MENU_BTN_GAP;
         }
-        centerCameraOnStart();
+        if (isInsideMenuButton(logicalX, logicalY, menuTop)) {
+            if (hasSaveFile) {
+                confirmingNewKingdom = true;
+            } else {
+                world.beginNewKingdom();
+                centerCameraOnStart();
+            }
+            invalidate();
+            return;
+        }
+        menuTop += MENU_BTN_HEIGHT + MENU_BTN_GAP;
+        if (isInsideMenuButton(logicalX, logicalY, menuTop)) {
+            openHelp();
+        }
+    }
+
+    private boolean isInsideMenuButton(float x, float y, float top) {
+        return isInsidePill(x, y, MENU_BTN_CX, top + MENU_BTN_HEIGHT / 2f, MENU_BTN_HALF_W, MENU_BTN_HEIGHT / 2f);
+    }
+
+    private void handleNewKingdomConfirmTap(float logicalX, float logicalY) {
+        if (isInsidePill(logicalX, logicalY, 525f, 419f, 105f, 27f)) {
+            confirmingNewKingdom = false;
+            world.beginNewKingdom();
+            centerCameraOnStart();
+        } else if (isInsidePill(logicalX, logicalY, 755f, 419f, 105f, 27f)) {
+            confirmingNewKingdom = false;
+        }
         invalidate();
     }
 
     private void handlePausedTap(float logicalX, float logicalY) {
         if (isInsidePill(logicalX, logicalY, 640f, 440f, 58f, 27f)) {
             toggleLanguage();
-        } else {
-            world.resume();
+            invalidate();
+            return;
         }
+        if (isInsidePill(logicalX, logicalY, 640f, 490f, 100f, 18f)) {
+            exitToMainMenu();
+            return;
+        }
+        world.resume();
         invalidate();
     }
 
@@ -942,8 +937,6 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         }
         if (activeOverlay == Overlay.BUILD_MENU) {
             handleBuildMenuTap(logicalX, logicalY);
-        } else if (activeOverlay == Overlay.TECH_TREE) {
-            handleTechTreeTap(logicalX, logicalY);
         }
         invalidate();
     }
@@ -975,21 +968,6 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         }
     }
 
-    private void handleTechTreeTap(float logicalX, float logicalY) {
-        float contentLeft = MODAL_LEFT + 90f;
-        float contentTop = MODAL_TOP + 100f;
-        float contentWidth = MODAL_RIGHT - MODAL_LEFT - 180f;
-        float contentHeight = MODAL_BOTTOM - MODAL_TOP - 180f;
-        for (TechNode node : world.getTechNodes()) {
-            float nodeX = techNodeX(node.id, contentLeft, contentWidth);
-            float nodeY = techNodeY(node.id, contentTop, contentHeight);
-            if (distance(logicalX, logicalY, nodeX, nodeY) <= 30f) {
-                world.selectActiveTech(node.id);
-                return;
-            }
-        }
-    }
-
     private void handleWorldTap(float logicalX, float logicalY) {
         if (isInsidePill(logicalX, logicalY, PAUSE_X, PAUSE_Y, 34f, 34f)) {
             world.pause();
@@ -1003,8 +981,7 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
             return;
         }
         if (isInsidePill(logicalX, logicalY, RESEARCH_BTN_CX, BOTTOM_BTN_CY, BOTTOM_BTN_HALF_W, BOTTOM_BTN_HALF_H)) {
-            activeOverlay = Overlay.TECH_TREE;
-            invalidate();
+            openTechTree();
             return;
         }
         if (isInsidePill(logicalX, logicalY, END_TURN_BTN_CX, BOTTOM_BTN_CY, BOTTOM_BTN_HALF_W, BOTTOM_BTN_HALF_H)) {
@@ -1035,10 +1012,6 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
 
     private boolean isInsidePill(float x, float y, float centerX, float centerY, float halfW, float halfH) {
         return Math.abs(x - centerX) <= halfW && Math.abs(y - centerY) <= halfH;
-    }
-
-    private static float distance(float x1, float y1, float x2, float y2) {
-        return (float) Math.hypot(x1 - x2, y1 - y2);
     }
 
     private void clampCamera() {
@@ -1093,6 +1066,12 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         }
     }
 
+    private void exitToMainMenu() {
+        world.showTitle();
+        saveKingdom();
+        invalidate();
+    }
+
     private void saveKingdom() {
         if (world.getState() == KingdomWorld.State.TITLE) {
             return;
@@ -1105,8 +1084,37 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         }
     }
 
+    @SuppressWarnings("deprecation")
+    private void openTechTree() {
+        Intent intent = new Intent(getContext(), TechTreeActivity.class);
+        intent.putExtra(TechTreeActivity.EXTRA_TECH_POINTS, world.getTechPointPool());
+        intent.putExtra(TechTreeActivity.EXTRA_ACTIVE_TECH, world.getActiveTechId());
+        intent.putExtra(TechTreeActivity.EXTRA_UNLOCKED_BITS, world.getTechUnlockedBits());
+        intent.putExtra(TechTreeActivity.EXTRA_LANGUAGE, language);
+        ((Activity) getContext()).startActivityForResult(intent, TechTreeActivity.REQUEST_CODE);
+    }
+
+    /** Applies the technology chosen in {@link TechTreeActivity}, forwarded via activity result. */
+    void applyTechSelection(int techId) {
+        if (techId != TechNode.NONE) {
+            world.selectActiveTech(techId);
+        }
+        invalidate();
+    }
+
+    private void openHelp() {
+        Intent intent = new Intent(getContext(), HelpActivity.class);
+        intent.putExtra(HelpActivity.EXTRA_LANGUAGE, language);
+        getContext().startActivity(intent);
+    }
+
     boolean handleBack() {
         KingdomWorld.State state = world.getState();
+        if (confirmingNewKingdom) {
+            confirmingNewKingdom = false;
+            invalidate();
+            return true;
+        }
         if (activeOverlay != Overlay.NONE) {
             activeOverlay = Overlay.NONE;
             invalidate();
@@ -1124,9 +1132,7 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
             return true;
         }
         if (state == KingdomWorld.State.PAUSED) {
-            world.showTitle();
-            saveKingdom();
-            invalidate();
+            exitToMainMenu();
             return true;
         }
         return false;

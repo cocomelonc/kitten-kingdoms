@@ -79,7 +79,7 @@ final class KingdomSerializer {
         return data;
     }
 
-    private static int packTechBits(boolean[] techUnlocked) {
+    static int packTechBits(boolean[] techUnlocked) {
         int bits = 0;
         for (int i = 0; i < techUnlocked.length; i++) {
             if (techUnlocked[i]) {
@@ -89,7 +89,7 @@ final class KingdomSerializer {
         return bits;
     }
 
-    private static boolean[] unpackTechBits(int bits) {
+    static boolean[] unpackTechBits(int bits) {
         boolean[] techUnlocked = new boolean[TechNode.COUNT];
         for (int i = 0; i < TechNode.COUNT; i++) {
             techUnlocked[i] = (bits & (1 << i)) != 0;

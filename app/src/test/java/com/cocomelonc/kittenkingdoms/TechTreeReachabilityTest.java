@@ -7,6 +7,7 @@
 package com.cocomelonc.kittenkingdoms;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -88,6 +89,30 @@ public final class TechTreeReachabilityTest {
         for (boolean nodeReached : reached) {
             assertTrue("Tech tree has an unreachable node", nodeReached);
         }
+    }
+
+    @Test
+    public void rootNodeHasNoPrerequisitesToMeet() {
+        TechNode[] all = TechNode.createAll();
+        boolean[] noneUnlocked = new boolean[all.length];
+        assertTrue(TechNode.prerequisitesMet(all[TechNode.BASIC_TOOLS], noneUnlocked));
+    }
+
+    @Test
+    public void nodeWithUnmetPrerequisiteIsNotAvailable() {
+        TechNode[] all = TechNode.createAll();
+        boolean[] noneUnlocked = new boolean[all.length];
+        assertFalse(TechNode.prerequisitesMet(all[TechNode.CURIOUS_MINDS], noneUnlocked));
+    }
+
+    @Test
+    public void nodeBecomesAvailableOnceAllPrerequisitesUnlock() {
+        TechNode[] all = TechNode.createAll();
+        boolean[] unlocked = new boolean[all.length];
+        unlocked[TechNode.FISHING_NETS] = true;
+        assertFalse(TechNode.prerequisitesMet(all[TechNode.CURIOUS_MINDS], unlocked));
+        unlocked[TechNode.TEXTILE_CRAFT] = true;
+        assertTrue(TechNode.prerequisitesMet(all[TechNode.CURIOUS_MINDS], unlocked));
     }
 
     private static List<List<Integer>> buildUnlocksAdjacency(TechNode[] all) {
