@@ -17,7 +17,8 @@ final class TechNode {
     static final int WARM_BEDDING = 6;
     static final int COMMUNITY_SPIRIT = 7;
     static final int KINGDOM_CHARTER = 8;
-    static final int COUNT = 9;
+    static final int CRYSTAL_VEINS = 9;
+    static final int COUNT = 10;
 
     static final int NONE = -1;
 
@@ -64,7 +65,7 @@ final class TechNode {
     static TechNode[] createAll() {
         TechNode[] all = new TechNode[]{
                 basicTools(), fishingNets(), textileCraft(), stoneMasonry(), efficientFarming(),
-                curiousMinds(), warmBedding(), communitySpirit(), kingdomCharter()
+                curiousMinds(), warmBedding(), communitySpirit(), kingdomCharter(), crystalVeins()
         };
         if (all.length != COUNT) {
             throw new IllegalStateException("Tech registry must contain exactly " + COUNT + " entries");
@@ -139,5 +140,11 @@ final class TechNode {
         return new TechNode(KINGDOM_CHARTER, R.string.tech_kingdom_charter, 25,
                 new int[]{COMMUNITY_SPIRIT, EFFICIENT_FARMING},
                 BuildingType.NONE, ResourceType.NONE, 0, 0);
+    }
+
+    private static TechNode crystalVeins() {
+        return new TechNode(CRYSTAL_VEINS, R.string.tech_crystal_veins, 30,
+                new int[]{KINGDOM_CHARTER},
+                BuildingType.CRYSTAL_MINE, ResourceType.NONE, 0, 0);
     }
 }

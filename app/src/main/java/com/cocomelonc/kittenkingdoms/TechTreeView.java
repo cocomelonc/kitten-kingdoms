@@ -38,9 +38,9 @@ final class TechTreeView extends View {
     private static final float CARD_TOP = 30f;
     private static final float CARD_RIGHT = 1240f;
     private static final float CARD_BOTTOM = 690f;
-    private static final int[] TECH_DEPTH = {0, 1, 1, 1, 1, 2, 2, 3, 4};
-    private static final int[] TECH_ROW_INDEX = {0, 0, 1, 2, 3, 0, 1, 0, 0};
-    private static final int[] TECH_ROW_COUNT = {1, 4, 2, 1, 1};
+    private static final int[] TECH_DEPTH = {0, 1, 1, 1, 1, 2, 2, 3, 4, 5};
+    private static final int[] TECH_ROW_INDEX = {0, 0, 1, 2, 3, 0, 1, 0, 0, 0};
+    private static final int[] TECH_ROW_COUNT = {1, 4, 2, 1, 1, 1};
 
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
     private final Path path = new Path();

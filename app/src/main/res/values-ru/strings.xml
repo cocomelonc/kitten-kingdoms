@@ -46,6 +46,7 @@
     <string name="resource_stone">Камень</string>
     <string name="resource_catnip">Кошачья мята</string>
     <string name="resource_yarn">Пряжа</string>
+    <string name="resource_crystals">Кристаллы</string>
 
     <string name="building_town_hall">Ратуша</string>
     <string name="building_fishing_dock">Рыбацкий причал</string>
@@ -57,6 +58,7 @@
     <string name="building_storage_barn">Амбар</string>
     <string name="building_scholars_den">Кабинет учёного</string>
     <string name="building_cozy_plaza">Уютная площадь</string>
+    <string name="building_crystal_mine">Кристальная шахта</string>
 
     <string name="tech_basic_tools">Простые инструменты</string>
     <string name="tech_fishing_nets">Рыболовные сети</string>
@@ -67,6 +69,10 @@
     <string name="tech_warm_bedding">Тёплые подстилки</string>
     <string name="tech_community_spirit">Дух общины</string>
     <string name="tech_kingdom_charter">Хартия королевства</string>
+    <string name="tech_crystal_veins">Кристальные жилы</string>
+
+    <string name="notify_building_built">Построено: %1$s</string>
+    <string name="notify_tech_unlocked">Изучено: %1$s</string>
 
     <string name="accessibility_game">Королевство котят. Веди пальцем, чтобы двигать карту, сжимай для масштаба, касайся, чтобы идти или разместить выбранное здание.</string>
     <string name="accessibility_building_placed">Здание построено</string>

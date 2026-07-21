@@ -13,7 +13,8 @@ final class ResourceType {
     static final int STONE = 2;
     static final int CATNIP = 3;
     static final int YARN = 4;
-    static final int COUNT = 5;
+    static final int CRYSTALS = 5;
+    static final int COUNT = 6;
     static final int NONE = -1;
 
     final int id;
@@ -31,7 +32,7 @@ final class ResourceType {
 
     static ResourceType[] createAll() {
         ResourceType[] all = new ResourceType[]{
-                fish(), wood(), stone(), catnip(), yarn()
+                fish(), wood(), stone(), catnip(), yarn(), crystals()
         };
         if (all.length != COUNT) {
             throw new IllegalStateException("Resource registry must contain exactly " + COUNT + " entries");
@@ -62,5 +63,9 @@ final class ResourceType {
 
     private static ResourceType yarn() {
         return new ResourceType(YARN, R.string.resource_yarn, 0xFFD88FB0);
+    }
+
+    private static ResourceType crystals() {
+        return new ResourceType(CRYSTALS, R.string.resource_crystals, 0xFF8E7CD8);
     }
 }

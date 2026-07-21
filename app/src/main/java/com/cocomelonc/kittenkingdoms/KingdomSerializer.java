@@ -19,7 +19,7 @@ import java.util.ArrayList;
  * so the caller can fall back to a fresh kingdom rather than crash.
  */
 final class KingdomSerializer {
-    private static final int SAVE_VERSION = 1;
+    private static final int SAVE_VERSION = 2;
     private static final int MAX_PLAUSIBLE_BUILDINGS = 100_000;
 
     private KingdomSerializer() {

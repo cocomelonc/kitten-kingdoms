@@ -18,7 +18,8 @@ final class BuildingType {
     static final int STORAGE_BARN = 7;
     static final int SCHOLARS_DEN = 8;
     static final int COZY_PLAZA = 9;
-    static final int COUNT = 10;
+    static final int CRYSTAL_MINE = 10;
+    static final int COUNT = 11;
 
     static final int NONE = -1;
 
@@ -85,7 +86,8 @@ final class BuildingType {
     static BuildingType[] createAll() {
         BuildingType[] all = new BuildingType[]{
                 townHall(), fishingDock(), lumberCamp(), quarry(), catnipFarm(),
-                weaversCottage(), kittenCottage(), storageBarn(), scholarsDen(), cozyPlaza()
+                weaversCottage(), kittenCottage(), storageBarn(), scholarsDen(), cozyPlaza(),
+                crystalMine()
         };
         if (all.length != COUNT) {
             throw new IllegalStateException("Building registry must contain exactly " + COUNT + " entries");
@@ -188,5 +190,14 @@ final class BuildingType {
                 costOf(0, 14, 8), noAmounts(), noAmounts(),
                 TechNode.COMMUNITY_SPIRIT, TerrainType.NONE, 2, true,
                 0, 0, 0, 3);
+    }
+
+    private static BuildingType crystalMine() {
+        int[] upkeep = new int[ResourceType.COUNT];
+        upkeep[ResourceType.WOOD] = 1;
+        return new BuildingType(CRYSTAL_MINE, R.string.building_crystal_mine,
+                costOf(20, 15, 0), outputOf(ResourceType.CRYSTALS, 2), upkeep,
+                TechNode.CRYSTAL_VEINS, TerrainType.STONE_OUTCROP, 3, true,
+                0, 0, 0, 0);
     }
 }

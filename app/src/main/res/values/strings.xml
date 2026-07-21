@@ -46,6 +46,7 @@
     <string name="resource_stone">Stone</string>
     <string name="resource_catnip">Catnip</string>
     <string name="resource_yarn">Yarn</string>
+    <string name="resource_crystals">Crystals</string>
 
     <string name="building_town_hall">Town Hall</string>
     <string name="building_fishing_dock">Fishing Dock</string>
@@ -57,6 +58,7 @@
     <string name="building_storage_barn">Storage Barn</string>
     <string name="building_scholars_den">Scholar\'s Den</string>
     <string name="building_cozy_plaza">Cozy Plaza</string>
+    <string name="building_crystal_mine">Crystal Mine</string>
 
     <string name="tech_basic_tools">Basic Tools</string>
     <string name="tech_fishing_nets">Fishing Nets</string>
@@ -67,6 +69,10 @@
     <string name="tech_warm_bedding">Warm Bedding</string>
     <string name="tech_community_spirit">Community Spirit</string>
     <string name="tech_kingdom_charter">Kingdom Charter</string>
+    <string name="tech_crystal_veins">Crystal Veins</string>
+
+    <string name="notify_building_built">%1$s built!</string>
+    <string name="notify_tech_unlocked">%1$s researched!</string>
 
     <string name="accessibility_game">Kitten Kingdoms. Drag to pan the map, pinch to zoom, tap to walk or to place a selected building.</string>
     <string name="accessibility_building_placed">Building placed</string>

@@ -31,7 +31,7 @@ public final class KingdomSerializerTest {
         original.techUnlocked = new boolean[TechNode.COUNT];
         original.techUnlocked[TechNode.BASIC_TOOLS] = true;
         original.techUnlocked[TechNode.FISHING_NETS] = true;
-        original.resources = new int[]{5, 6, 7, 8, 9};
+        original.resources = new int[]{5, 6, 7, 8, 9, 3};
         original.buildings = new ArrayList<>();
         original.buildings.add(new int[]{BuildingType.TOWN_HALL, 48, 48, 0});
         original.buildings.add(new int[]{BuildingType.CATNIP_FARM, 48, 49, 1});
@@ -70,7 +70,7 @@ public final class KingdomSerializerTest {
 
     @Test
     public void truncatedStreamFailsCleanlyRatherThanCrashing() {
-        byte[] truncated = new byte[]{0, 0, 0, 1};
+        byte[] truncated = new byte[]{0, 0, 0, 2};
         assertThrows(IOException.class, () -> KingdomSerializer.read(new ByteArrayInputStream(truncated)));
     }
 }

@@ -30,6 +30,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -72,6 +73,9 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     private static final float MENU_BTN_HEIGHT = 54f;
     private static final float MENU_BTN_GAP = 14f;
     private static final float MENU_TOP = 226f;
+    private static final float NOTIFICATION_DURATION = 2.4f;
+    private static final int WILDLIFE_PER_SPECIES = 2;
+    private static final int WILDLIFE_SPAWN_RADIUS = 25;
     private static final String PREFS = "kitten_kingdoms_progress";
     private static final String PREF_LANGUAGE = "language";
     private static final String SAVE_FILE_NAME = "kingdom.sav";
@@ -87,6 +91,7 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     private final KingdomWorld world;
     private final TerrainType[] terrainTypes = TerrainType.createAll();
     private final List<Particle> particles = new ArrayList<>();
+    private final List<WildlifeCritter> wildlifeCritters = new ArrayList<>();
     private final Random random = new Random(0xA17E5501L);
     private final File saveFile;
     private final ScaleGestureDetector scaleGestureDetector;
@@ -116,6 +121,9 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     private boolean confirmingNewKingdom;
     private int rejectionReason = KingdomWorld.PLACEMENT_OK;
     private float rejectionMessageUntil;
+    private final ArrayDeque<String> pendingNotifications = new ArrayDeque<>();
+    private String currentNotificationText;
+    private float currentNotificationRemaining;
 
     KittenKingdomsView(Context context) {
         super(context);
@@ -173,12 +181,16 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         float dt = lastFrameNanos == 0L ? 0f : (now - lastFrameNanos) / 1_000_000_000f;
         lastFrameNanos = now;
         dt = Math.min(dt, 0.05f);
+        KingdomWorld.State visualState = world.getState();
         if (hostResumed) {
             world.update(dt);
             updateParticles(dt);
+            updateNotifications(dt);
+            if (visualState == KingdomWorld.State.PLAYING) {
+                updateWildlife(dt);
+            }
         }
 
-        KingdomWorld.State visualState = world.getState();
         music.setPlaying(hostResumed && visualState == KingdomWorld.State.PLAYING);
         if (visualState != lastVisualState) {
             lastVisualState = visualState;
@@ -292,6 +304,7 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
             drawGridOverlayIfPlacing(canvas);
         }
         drawHud(canvas, time);
+        drawNotificationBanner(canvas);
 
         if (world.getPendingBuildingTypeId() != BuildingType.NONE) {
             drawPlacementBanner(canvas, time);
@@ -337,6 +350,21 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
             float cx = building.col * TILE + TILE / 2f;
             float cy = building.row * TILE + TILE / 2f;
             drawBuildingToken(canvas, building.typeId, cx, cy, !building.isComplete(), time);
+        }
+
+        for (WildlifeCritter critter : wildlifeCritters) {
+            int critterRow = (int) (critter.worldY / TILE);
+            int critterCol = (int) (critter.worldX / TILE);
+            if (critterRow < firstRow || critterRow > lastRow
+                    || critterCol < firstCol || critterCol > lastCol
+                    || !map.isExplored(critterRow, critterCol)) {
+                continue;
+            }
+            canvas.save();
+            canvas.translate(critter.worldX, critter.worldY);
+            canvas.scale(0.3f, 0.3f);
+            drawWildlifeCritter(canvas, critter, time);
+            canvas.restore();
         }
 
         drawParticles(canvas);
@@ -522,7 +550,7 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     private void drawHud(Canvas canvas, float time) {
         drawPill(canvas, 20f, 16f, 780f, 78f, 0xE0FDFAF0, 0x203E3226);
         ResourceType[] resourceTypes = ResourceType.createAll();
-        float slotWidth = 148f;
+        float slotWidth = 740f / resourceTypes.length;
         for (int i = 0; i < resourceTypes.length; i++) {
             float cx = 55f + i * slotWidth;
             paint.setColor(resourceTypes[i].color);
@@ -600,10 +628,13 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
 
         BuildingType[] types = world.getBuildingTypes();
         int columns = 3;
+        int rowCount = (countPlayerBuildableTypes(types) + columns - 1) / columns;
         float contentLeft = MODAL_LEFT + 60f;
         float contentTop = MODAL_TOP + 90f;
+        float contentBottom = MODAL_BOTTOM - 80f;
         float cellWidth = (MODAL_RIGHT - MODAL_LEFT - 120f) / columns;
-        float cellHeight = 150f;
+        float cellHeight = (contentBottom - contentTop) / rowCount;
+        float scale = Math.min(1f, cellHeight / 150f);
         int index = 0;
         for (BuildingType type : types) {
             if (!type.playerBuildable) {
@@ -614,16 +645,16 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
             float cx = contentLeft + (col + 0.5f) * cellWidth;
             float cy = contentTop + row * cellHeight + cellHeight * 0.42f;
             boolean affordable = world.canAffordBuilding(type.id);
-            drawPill(canvas, cx - cellWidth * 0.44f, cy - 58f, cx + cellWidth * 0.44f, cy + 58f,
+            drawPill(canvas, cx - cellWidth * 0.44f, cy - 58f * scale, cx + cellWidth * 0.44f, cy + 58f * scale,
                     affordable ? 0xFFFFFDF6 : 0xFFEDE9DD, 0x14443C2E);
             canvas.save();
-            canvas.translate(cx, cy - 28f);
-            canvas.scale(1.1f, 1.1f);
+            canvas.translate(cx, cy - 28f * scale);
+            canvas.scale(1.1f * scale, 1.1f * scale);
             drawBuildingToken(canvas, type.id, 0f, 0f, false, 0f);
             canvas.restore();
-            drawFittedText(canvas, text(type.nameRes), cx, cy + 26f, 18f, cellWidth * 0.86f,
+            drawFittedText(canvas, text(type.nameRes), cx, cy + 26f * scale, 18f * scale, cellWidth * 0.86f,
                     affordable ? 0xFF443C2E : 0xFF9A9284, true);
-            drawFittedText(canvas, formatCost(type), cx, cy + 48f, 14f, cellWidth * 0.86f,
+            drawFittedText(canvas, formatCost(type), cx, cy + 48f * scale, 14f * scale, cellWidth * 0.86f,
                     affordable ? 0xFF74694F : 0xFFAAA294, false);
             index++;
         }
@@ -632,6 +663,16 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
                 (MODAL_LEFT + MODAL_RIGHT) / 2f + 90f, MODAL_BOTTOM - 20f, 0xFFE9DDCB, 0x1E443C2E);
         drawFittedText(canvas, text(R.string.cancel), (MODAL_LEFT + MODAL_RIGHT) / 2f, MODAL_BOTTOM - 32f,
                 20f, 160f, 0xFF443C2E, true);
+    }
+
+    private int countPlayerBuildableTypes(BuildingType[] types) {
+        int count = 0;
+        for (BuildingType type : types) {
+            if (type.playerBuildable) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private String formatCost(BuildingType type) {
@@ -820,6 +861,187 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         }
     }
 
+    private void spawnWildlife() {
+        wildlifeCritters.clear();
+        WorldMap map = world.getMap();
+        spawnCritterGroup(map, WildlifeCritter.RABBIT, false);
+        spawnCritterGroup(map, WildlifeCritter.HEDGEHOG, false);
+        spawnCritterGroup(map, WildlifeCritter.BEE, false);
+        spawnCritterGroup(map, WildlifeCritter.DUCKLING, true);
+    }
+
+    private void spawnCritterGroup(WorldMap map, int species, boolean requiresWater) {
+        for (int i = 0; i < WILDLIFE_PER_SPECIES; i++) {
+            int[] cell = findNearbyCell(map, WorldMap.START_ROW, WorldMap.START_COL,
+                    WILDLIFE_SPAWN_RADIUS, requiresWater);
+            if (cell == null) {
+                continue;
+            }
+            WildlifeCritter critter = new WildlifeCritter(species);
+            critter.worldX = cell[1] * TILE + TILE / 2f;
+            critter.worldY = cell[0] * TILE + TILE / 2f;
+            critter.targetX = critter.worldX;
+            critter.targetY = critter.worldY;
+            critter.speed = 18f + random.nextFloat() * 10f;
+            wildlifeCritters.add(critter);
+        }
+    }
+
+    private int[] findNearbyCell(WorldMap map, int anchorRow, int anchorCol, int radius, boolean requiresWater) {
+        for (int attempt = 0; attempt < 40; attempt++) {
+            int row = anchorRow + random.nextInt(radius * 2 + 1) - radius;
+            int col = anchorCol + random.nextInt(radius * 2 + 1) - radius;
+            if (!map.inBounds(row, col)) {
+                continue;
+            }
+            boolean suitable = requiresWater
+                    ? map.terrainAt(row, col) == TerrainType.WATER
+                    : map.isWalkable(row, col);
+            if (suitable) {
+                return new int[]{row, col};
+            }
+        }
+        return null;
+    }
+
+    private void updateWildlife(float dt) {
+        WorldMap map = world.getMap();
+        for (WildlifeCritter critter : wildlifeCritters) {
+            critter.retargetIn -= dt;
+            float dx = critter.targetX - critter.worldX;
+            float dy = critter.targetY - critter.worldY;
+            float distance = (float) Math.hypot(dx, dy);
+            if (critter.retargetIn <= 0f || distance < 2f) {
+                pickNewWildlifeTarget(map, critter);
+                continue;
+            }
+            float step = critter.speed * dt;
+            if (step >= distance) {
+                critter.worldX = critter.targetX;
+                critter.worldY = critter.targetY;
+            } else {
+                critter.worldX += dx / distance * step;
+                critter.worldY += dy / distance * step;
+            }
+            if (Math.abs(dx) > 1f) {
+                critter.facing = dx < 0f ? -1f : 1f;
+            }
+        }
+    }
+
+    private void pickNewWildlifeTarget(WorldMap map, WildlifeCritter critter) {
+        int currentRow = (int) (critter.worldY / TILE);
+        int currentCol = (int) (critter.worldX / TILE);
+        boolean requiresWater = critter.species == WildlifeCritter.DUCKLING;
+        int[] cell = findNearbyCell(map, currentRow, currentCol, 3, requiresWater);
+        if (cell == null) {
+            critter.retargetIn = 1f;
+            return;
+        }
+        critter.targetX = cell[1] * TILE + TILE / 2f;
+        critter.targetY = cell[0] * TILE + TILE / 2f;
+        critter.retargetIn = 3f + random.nextFloat() * 3f;
+    }
+
+    private void drawWildlifeCritter(Canvas canvas, WildlifeCritter critter, float time) {
+        canvas.save();
+        canvas.scale(critter.facing < 0f ? -1f : 1f, 1f);
+        float bounceFreq = critter.species == WildlifeCritter.BEE ? 10f : 7f;
+        float bounce = (float) Math.sin(time * bounceFreq + critter.worldX * 0.05f) * 1.6f;
+        canvas.translate(0f, bounce);
+        switch (critter.species) {
+            case WildlifeCritter.HEDGEHOG:
+                paint.setColor(0x264A4234);
+                canvas.drawOval(-14f, 10f, 14f, 16f, paint);
+                paint.setColor(0xFF8B7355);
+                canvas.drawOval(-14f, -8f, 14f, 10f, paint);
+                paint.setColor(0xFFF0DCC0);
+                canvas.drawOval(6f, -6f, 16f, 6f, paint);
+                paint.setColor(0xFF6B5842);
+                for (int i = 0; i < 4; i++) {
+                    float spikeX = -12f + i * 7f;
+                    path.reset();
+                    path.moveTo(spikeX, -6f);
+                    path.lineTo(spikeX + 3f, -14f);
+                    path.lineTo(spikeX + 6f, -6f);
+                    path.close();
+                    canvas.drawPath(path, paint);
+                }
+                paint.setColor(0xFF5E5872);
+                canvas.drawCircle(12f, -2f, 1.6f, paint);
+                break;
+            case WildlifeCritter.RABBIT:
+                paint.setColor(0x264A4234);
+                canvas.drawOval(-12f, 12f, 12f, 17f, paint);
+                paint.setColor(0xFFECE6DC);
+                canvas.drawOval(-12f, -4f, 12f, 14f, paint);
+                canvas.drawCircle(0f, -10f, 9f, paint);
+                canvas.drawOval(-7f, -26f, -2f, -8f, paint);
+                canvas.drawOval(2f, -26f, 7f, -8f, paint);
+                paint.setColor(0xFFEBAFC0);
+                canvas.drawOval(-6f, -25f, -3f, -12f, paint);
+                canvas.drawOval(3f, -25f, 6f, -12f, paint);
+                paint.setColor(0xFF5E5872);
+                canvas.drawCircle(-3f, -10f, 1.6f, paint);
+                canvas.drawCircle(4f, -10f, 1.6f, paint);
+                break;
+            case WildlifeCritter.DUCKLING:
+                paint.setColor(0x264A4234);
+                canvas.drawOval(-12f, 10f, 12f, 15f, paint);
+                paint.setColor(0xFFF3CB4F);
+                canvas.drawOval(-12f, -4f, 12f, 12f, paint);
+                canvas.drawCircle(8f, -10f, 7f, paint);
+                paint.setColor(0xFFE08A3C);
+                path.reset();
+                path.moveTo(13f, -10f);
+                path.lineTo(20f, -8f);
+                path.lineTo(13f, -6f);
+                path.close();
+                canvas.drawPath(path, paint);
+                paint.setColor(0xFF5E5872);
+                canvas.drawCircle(9f, -12f, 1.4f, paint);
+                break;
+            case WildlifeCritter.BEE:
+                paint.setColor(0x99FFFFFF);
+                canvas.drawOval(-6f, -14f, 0f, -4f, paint);
+                canvas.drawOval(0f, -14f, 6f, -4f, paint);
+                paint.setColor(0xFFF3C74A);
+                canvas.drawOval(-8f, -6f, 8f, 6f, paint);
+                paint.setColor(0xFF443C2E);
+                canvas.drawRect(-3f, -6f, -1f, 6f, paint);
+                canvas.drawRect(1f, -6f, 3f, 6f, paint);
+                break;
+            default:
+                break;
+        }
+        canvas.restore();
+    }
+
+    private void enqueueNotification(String text) {
+        pendingNotifications.add(text);
+    }
+
+    private void updateNotifications(float dt) {
+        if (currentNotificationText != null) {
+            currentNotificationRemaining -= dt;
+            if (currentNotificationRemaining <= 0f) {
+                currentNotificationText = null;
+            }
+        }
+        if (currentNotificationText == null && !pendingNotifications.isEmpty()) {
+            currentNotificationText = pendingNotifications.poll();
+            currentNotificationRemaining = NOTIFICATION_DURATION;
+        }
+    }
+
+    private void drawNotificationBanner(Canvas canvas) {
+        if (currentNotificationText == null) {
+            return;
+        }
+        drawPill(canvas, 440f, 92f, 840f, 132f, 0xF0FFFBEE, 0x203E3226);
+        drawFittedText(canvas, currentNotificationText, 640f, 118f, 19f, 360f, 0xFF443C2E, true);
+    }
+
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         if (viewScale <= 0f) {
@@ -911,6 +1133,7 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
             if (isInsideMenuButton(logicalX, logicalY, menuTop)) {
                 loadAndContinue();
                 centerCameraOnStart();
+                spawnWildlife();
                 invalidate();
                 return;
             }
@@ -922,6 +1145,7 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
             } else {
                 world.beginNewKingdom();
                 centerCameraOnStart();
+                spawnWildlife();
             }
             invalidate();
             return;
@@ -941,6 +1165,7 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
             confirmingNewKingdom = false;
             world.beginNewKingdom();
             centerCameraOnStart();
+            spawnWildlife();
         } else if (isInsidePill(logicalX, logicalY, 755f, 419f, 105f, 27f)) {
             confirmingNewKingdom = false;
         }
@@ -978,10 +1203,13 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     private void handleBuildMenuTap(float logicalX, float logicalY) {
         BuildingType[] types = world.getBuildingTypes();
         int columns = 3;
+        int rowCount = (countPlayerBuildableTypes(types) + columns - 1) / columns;
         float contentLeft = MODAL_LEFT + 60f;
         float contentTop = MODAL_TOP + 90f;
+        float contentBottom = MODAL_BOTTOM - 80f;
         float cellWidth = (MODAL_RIGHT - MODAL_LEFT - 120f) / columns;
-        float cellHeight = 150f;
+        float cellHeight = (contentBottom - contentTop) / rowCount;
+        float scale = Math.min(1f, cellHeight / 150f);
         int index = 0;
         for (BuildingType type : types) {
             if (!type.playerBuildable) {
@@ -991,7 +1219,7 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
             int col = index % columns;
             float cx = contentLeft + (col + 0.5f) * cellWidth;
             float cy = contentTop + row * cellHeight + cellHeight * 0.42f;
-            if (isInsidePill(logicalX, logicalY, cx, cy, cellWidth * 0.44f, 58f)) {
+            if (isInsidePill(logicalX, logicalY, cx, cy, cellWidth * 0.44f, 58f * scale)) {
                 if (world.canAffordBuilding(type.id)) {
                     world.selectBuildingForPlacement(type.id);
                     activeOverlay = Overlay.NONE;
@@ -1211,6 +1439,8 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         spawnParticlesWorld(col * TILE + TILE / 2f, row * TILE + TILE / 2f, 0xFFE9B65C, 14);
         performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
         announceForAccessibility(text(R.string.accessibility_building_placed));
+        BuildingType type = world.getBuildingTypes()[buildingTypeId];
+        enqueueNotification(String.format(text(R.string.notify_building_built), text(type.nameRes)));
     }
 
     @Override
@@ -1218,6 +1448,8 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         audio.playTechUnlocked();
         performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
         announceForAccessibility(text(R.string.accessibility_tech_unlocked));
+        TechNode tech = world.getTechNodes()[techId];
+        enqueueNotification(String.format(text(R.string.notify_tech_unlocked), text(tech.nameRes)));
     }
 
     @Override
