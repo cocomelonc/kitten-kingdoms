@@ -114,6 +114,8 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     private float overlayProgress = 1f;
     private int completedBuildingsCount;
     private boolean confirmingNewKingdom;
+    private int rejectionReason = KingdomWorld.PLACEMENT_OK;
+    private float rejectionMessageUntil;
 
     KittenKingdomsView(Context context) {
         super(context);
@@ -292,7 +294,7 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         drawHud(canvas, time);
 
         if (world.getPendingBuildingTypeId() != BuildingType.NONE) {
-            drawPlacementBanner(canvas);
+            drawPlacementBanner(canvas, time);
         }
 
         if (activeOverlay == Overlay.BUILD_MENU) {
@@ -551,11 +553,43 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         drawFittedText(canvas, label, cx, BOTTOM_BTN_CY + 7f, 21f, BOTTOM_BTN_HALF_W * 1.8f, 0xFF443C2E, true);
     }
 
-    private void drawPlacementBanner(Canvas canvas) {
+    private void drawPlacementBanner(Canvas canvas, float time) {
         BuildingType type = world.getBuildingTypes()[world.getPendingBuildingTypeId()];
+        boolean showRejection = time < rejectionMessageUntil;
         drawPill(canvas, 350f, 656f, 930f, 660f + 44f, 0xF0FFFBEE, 0x203E3226);
-        drawFittedText(canvas, text(type.nameRes) + " — " + text(R.string.cancel) + "?",
-                640f, 685f, 20f, 550f, 0xFF443C2E, true);
+        if (showRejection) {
+            drawFittedText(canvas, rejectionMessage(), 640f, 685f, 20f, 550f, 0xFFB4553E, true);
+        } else {
+            drawFittedText(canvas, text(type.nameRes) + " - " + text(R.string.cancel) + "?",
+                    640f, 685f, 20f, 550f, 0xFF443C2E, true);
+        }
+    }
+
+    private String rejectionMessage() {
+        switch (rejectionReason) {
+            case KingdomWorld.PLACEMENT_REJECTED_TECH:
+                return text(R.string.placement_needs_tech);
+            case KingdomWorld.PLACEMENT_REJECTED_TERRAIN:
+                BuildingType type = world.getBuildingTypes()[world.getPendingBuildingTypeId()];
+                return String.format(text(R.string.placement_needs_terrain), text(terrainNameRes(type.requiredAdjacentTerrain)));
+            case KingdomWorld.PLACEMENT_REJECTED_COST:
+                return text(R.string.placement_needs_resources);
+            case KingdomWorld.PLACEMENT_REJECTED_UNBUILDABLE:
+            default:
+                return text(R.string.placement_needs_tile);
+        }
+    }
+
+    private int terrainNameRes(int terrainId) {
+        switch (terrainId) {
+            case TerrainType.WATER:
+                return R.string.terrain_water;
+            case TerrainType.STONE_OUTCROP:
+                return R.string.terrain_stone_outcrop;
+            case TerrainType.FOREST:
+            default:
+                return R.string.terrain_forest;
+        }
     }
 
     private void drawBuildMenu(Canvas canvas) {
@@ -961,6 +995,7 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
                 if (world.canAffordBuilding(type.id)) {
                     world.selectBuildingForPlacement(type.id);
                     activeOverlay = Overlay.NONE;
+                    rejectionMessageUntil = 0f;
                 }
                 return;
             }
@@ -994,6 +1029,7 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         if (world.getPendingBuildingTypeId() != BuildingType.NONE
                 && isInsidePill(logicalX, logicalY, 640f, 678f, 290f, 22f)) {
             world.cancelPlacement();
+            rejectionMessageUntil = 0f;
             invalidate();
             return;
         }
@@ -1004,8 +1040,14 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         float worldY = cameraY + (logicalY - MAP_TOP) / zoom;
         int col = (int) Math.floor(worldX / TILE);
         int row = (int) Math.floor(worldY / TILE);
+        int pendingBuildingTypeId = world.getPendingBuildingTypeId();
         if (world.tapCell(row, col)) {
             performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
+            rejectionMessageUntil = 0f;
+        } else if (pendingBuildingTypeId != BuildingType.NONE) {
+            rejectionReason = world.checkPlacement(pendingBuildingTypeId, row, col);
+            rejectionMessageUntil = System.nanoTime() / 1_000_000_000f + 2.2f;
+            performHapticFeedback(HapticFeedbackConstants.REJECT);
         }
         invalidate();
     }

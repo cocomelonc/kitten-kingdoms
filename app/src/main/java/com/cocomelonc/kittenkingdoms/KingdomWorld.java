@@ -24,6 +24,12 @@ final class KingdomWorld {
         PAUSED
     }
 
+    static final int PLACEMENT_OK = 0;
+    static final int PLACEMENT_REJECTED_UNBUILDABLE = 1;
+    static final int PLACEMENT_REJECTED_TECH = 2;
+    static final int PLACEMENT_REJECTED_TERRAIN = 3;
+    static final int PLACEMENT_REJECTED_COST = 4;
+
     interface Listener {
         void onTurnResolved(int[] resourceDeltas);
 
@@ -154,21 +160,29 @@ final class KingdomWorld {
     }
 
     boolean canPlaceBuildingAt(int buildingTypeId, int targetRow, int targetCol) {
+        return checkPlacement(buildingTypeId, targetRow, targetCol) == PLACEMENT_OK;
+    }
+
+    /** Reason a placement would fail, so the UI can explain a rejected tap instead of ignoring it. */
+    int checkPlacement(int buildingTypeId, int targetRow, int targetCol) {
         if (buildingTypeId < 0 || buildingTypeId >= BuildingType.COUNT) {
-            return false;
+            return PLACEMENT_REJECTED_UNBUILDABLE;
         }
         BuildingType type = buildingTypes[buildingTypeId];
         if (!map.isExplored(targetRow, targetCol) || !map.isBuildable(targetRow, targetCol)) {
-            return false;
+            return PLACEMENT_REJECTED_UNBUILDABLE;
         }
         if (type.requiredTechId != TechNode.NONE && !techUnlocked[type.requiredTechId]) {
-            return false;
+            return PLACEMENT_REJECTED_TECH;
         }
         if (type.requiredAdjacentTerrain != TerrainType.NONE
                 && !map.hasAdjacentTerrain(targetRow, targetCol, type.requiredAdjacentTerrain)) {
-            return false;
+            return PLACEMENT_REJECTED_TERRAIN;
         }
-        return canAffordBuilding(buildingTypeId);
+        if (!canAffordBuilding(buildingTypeId)) {
+            return PLACEMENT_REJECTED_COST;
+        }
+        return PLACEMENT_OK;
     }
 
     /** Taps a tile: places the pending building there, or otherwise walks the kitten toward it. */

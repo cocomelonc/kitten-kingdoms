@@ -23,6 +23,13 @@
     <string name="tech_points_label">Очки науки</string>
     <string name="cancel">Отмена</string>
     <string name="got_it">Понятно</string>
+    <string name="placement_needs_tile">Выбери открытую свободную клетку</string>
+    <string name="placement_needs_tech">Сначала изучи нужную технологию</string>
+    <string name="placement_needs_terrain">Нужно рядом с %1$s</string>
+    <string name="placement_needs_resources">Не хватает ресурсов</string>
+    <string name="terrain_forest">лесом</string>
+    <string name="terrain_water">водой</string>
+    <string name="terrain_stone_outcrop">каменным выходом</string>
 
     <string name="help_explore_heading">Исследуй</string>
     <string name="help_explore_line1">Веди пальцем, чтобы осмотреться, сжимай для масштаба.</string>
@@ -32,7 +39,7 @@
     <string name="help_build_line2">Некоторым зданиям нужна вода, лес или камень рядом.</string>
     <string name="help_research_heading">Исследуй науку</string>
     <string name="help_research_line1">Очки науки копятся каждый ход от Ратуши.</string>
-    <string name="help_research_line2">Выбери технологию — откроет здания и урожай.</string>
+    <string name="help_research_line2">Выбери технологию - откроет здания и урожай.</string>
 
     <string name="resource_fish">Рыба</string>
     <string name="resource_wood">Дерево</string>

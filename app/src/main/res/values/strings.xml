@@ -23,6 +23,13 @@
     <string name="tech_points_label">Tech points</string>
     <string name="cancel">Cancel</string>
     <string name="got_it">Got it</string>
+    <string name="placement_needs_tile">Choose a discovered, empty tile</string>
+    <string name="placement_needs_tech">Research the required technology first</string>
+    <string name="placement_needs_terrain">Needs to be near %1$s</string>
+    <string name="placement_needs_resources">Not enough resources</string>
+    <string name="terrain_forest">Forest</string>
+    <string name="terrain_water">Water</string>
+    <string name="terrain_stone_outcrop">a Stone Outcrop</string>
 
     <string name="help_explore_heading">Explore</string>
     <string name="help_explore_line1">Drag to look around, pinch to zoom, tap a tile to walk.</string>
