@@ -9,7 +9,7 @@ package com.cocomelonc.kittenkingdoms;
 import java.util.List;
 
 /**
- * Plain mutable transfer object for persistence. Terrain is never included here — it always
+ * Plain mutable transfer object for persistence. Terrain is never included here - it always
  * regenerates deterministically from {@link WorldMap#TERRAIN_SEED}.
  */
 final class KingdomSaveData {

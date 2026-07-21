@@ -11,7 +11,7 @@ continuous 96x96-tile world, uncover the land as you go, and build a small
 kingdom on the ground you've discovered: gather five resources, put up ten
 kinds of buildings, and research a nine-technology tree. There are no ads,
 accounts, purchases, trackers, network calls, timers, lives, or game-over
-screens — a kingdom can only grow, never fail.
+screens - a kingdom can only grow, never fail.
 
 The game starts in English and includes an in-game `EN / RU` language switch.
 Both Latin and Cyrillic use the same bundled Nunito typeface, so typography is
@@ -44,31 +44,31 @@ The pause card uses the same EN/RU switch as every other screen:
 
 - **Explore**: drag to pan the map, pinch to zoom, tap a tile to walk the
   kitten there. Fog of war reveals permanently in a radius around every tile
-  the kitten visits — once seen, land stays known.
+  the kitten visits - once seen, land stays known.
 - **Build**: once a tile is discovered, open *Build* and place any building
   you can afford there instantly; no need to walk the kitten to the site
   itself. Some buildings need to be adjacent to specific terrain (a Fishing
   Dock needs nearby water, a Lumber Camp nearby forest, a Quarry a nearby
   stone outcrop).
-- **Produce**: each building yields resources — Fish, Wood, Stone, Catnip, or
-  Yarn — every turn, and some consume a little upkeep. A building that can't
+- **Produce**: each building yields resources - Fish, Wood, Stone, Catnip, or
+  Yarn - every turn, and some consume a little upkeep. A building that can't
   afford its own upkeep simply idles for that turn; nothing is ever destroyed.
 - **Grow**: population grows toward each building's housing capacity as long
-  as there's enough Fish; if there isn't, growth just pauses — it never
+  as there's enough Fish; if there isn't, growth just pauses - it never
   reverses.
 - **Research**: tech points accumulate every turn from the Town Hall and any
   Scholar's Dens. Opening *Research* leaves the world view for its own screen
   showing the nine-node technology tree; pick a target node and once enough
   points have banked, it unlocks and any leftover points carry to the next
   choice. The system Back gesture/button returns you to the kingdom.
-- **End Turn**: the whole economy — production, upkeep, population, and
-  research — advances only when you tap *End Turn*. Exploration and building
+- **End Turn**: the whole economy - production, upkeep, population, and
+  research - advances only when you tap *End Turn*. Exploration and building
   placement happen anytime in between, independent of the turn clock.
 
 ### Why it is deliberately small
 
 - One MVP scope: a single settlement, one continuous map, five resources, ten
-  buildings, and a nine-node tech tree — trade and diplomacy with other
+  buildings, and a nine-node tech tree - trade and diplomacy with other
   kingdoms are intentionally left for later.
 - No engine: a single hardware-accelerated Android `View` renders the world,
   camera, HUD, and every modal screen; only visible tiles are drawn each
@@ -101,7 +101,7 @@ verification script also checks that no `.so` file enters the APK.
 `minSdk` controls the oldest Android release that can install the app, while
 `targetSdk` opts the app into the behavior rules of that Android generation.
 Kitten Kingdoms declares `minSdk 33` (Android 13) rather than the rest of the
-series' `minSdk 26` — every code path this project needs from `Build.VERSION.
+series' `minSdk 26` - every code path this project needs from `Build.VERSION.
 TIRAMISU` and the splash-screen API is available unconditionally, so
 `MainActivity` carries no legacy branches at all. See the official Android
 [`<uses-sdk>` documentation](https://developer.android.com/guide/topics/manifest/uses-sdk-element).
