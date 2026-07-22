@@ -13,8 +13,9 @@ import org.junit.Test;
 
 public final class BuildingTypeTest {
     @Test
-    public void registryContainsExactlyTenOrderedEntries() {
+    public void registryContainsExactlyThirtyTwoOrderedEntries() {
         BuildingType[] all = BuildingType.createAll();
+        assertEquals(32, BuildingType.COUNT);
         assertEquals(BuildingType.COUNT, all.length);
         for (int i = 0; i < all.length; i++) {
             assertEquals(i, all[i].id);
@@ -22,9 +23,9 @@ public final class BuildingTypeTest {
     }
 
     @Test
-    public void onlyTownHallIsNotPlayerBuildable() {
+    public void everyCatalogueBuildingIsPlayerBuildable() {
         for (BuildingType type : BuildingType.createAll()) {
-            assertEquals(type.id == BuildingType.TOWN_HALL, !type.playerBuildable);
+            assertTrue(type.playerBuildable);
         }
     }
 

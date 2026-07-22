@@ -28,6 +28,7 @@ final class KingdomWorld {
     static final int PLACEMENT_REJECTED_TECH = 2;
     static final int PLACEMENT_REJECTED_TERRAIN = 3;
     static final int PLACEMENT_REJECTED_COST = 4;
+    static final int PLACEMENT_REJECTED_PROGRESSION = 5;
     static final int WORKFORCE_OK = 0;
     static final int WORKFORCE_NO_KITTEN = 1;
     static final int WORKFORCE_NEEDS_RESOURCES = 2;
@@ -77,6 +78,8 @@ final class KingdomWorld {
     private final List<WorkerKitten> workers = new ArrayList<>();
     private final int[] resources = new int[ResourceType.COUNT];
     private final boolean[] techUnlocked = new boolean[TechNode.COUNT];
+    private final int[] envoyWorkerIds = new int[Settlement.COUNT];
+    private final int[] courierWorkerIds = new int[Settlement.COUNT];
     private final ArrayDeque<Integer> path = new ArrayDeque<>();
 
     private WorldMap map;
@@ -150,6 +153,8 @@ final class KingdomWorld {
         path.clear();
         pendingBuildingTypeId = BuildingType.NONE;
         diplomacy.reset();
+        Arrays.fill(envoyWorkerIds, BuildingType.NONE);
+        Arrays.fill(courierWorkerIds, BuildingType.NONE);
         nextBuildingId = 0;
         nextWorkerId = 0;
         buildings.add(new PlacedBuilding(nextBuildingId++, BuildingType.TOWN_HALL, row, col, 0));
@@ -188,13 +193,32 @@ final class KingdomWorld {
     }
 
     boolean canAffordBuilding(int buildingTypeId) {
+        if (buildingTypeId < 0 || buildingTypeId >= BuildingType.COUNT
+                || !isBuildingUnlocked(buildingTypeId)) {
+            return false;
+        }
         BuildingType type = buildingTypes[buildingTypeId];
         for (int r = 0; r < ResourceType.COUNT; r++) {
             if (resources[r] < type.cost[r]) {
                 return false;
             }
         }
-        return type.requiredTechId == TechNode.NONE || techUnlocked[type.requiredTechId];
+        return true;
+    }
+
+    boolean isBuildingUnlocked(int buildingTypeId) {
+        if (buildingTypeId < 0 || buildingTypeId >= BuildingType.COUNT) {
+            return false;
+        }
+        BuildingType type = buildingTypes[buildingTypeId];
+        if (type.requiredTechId != TechNode.NONE && !techUnlocked[type.requiredTechId]) {
+            return false;
+        }
+        if (turn < type.minTurn || population < type.minPopulation) {
+            return false;
+        }
+        return type.requiredBuildingTypeId == BuildingType.NONE
+                || countCompletedBuildings(type.requiredBuildingTypeId) >= type.requiredBuildingCount;
     }
 
     boolean canPlaceBuildingAt(int buildingTypeId, int targetRow, int targetCol) {
@@ -213,11 +237,17 @@ final class KingdomWorld {
         if (targetRow == row && targetCol == col) {
             return PLACEMENT_REJECTED_UNBUILDABLE;
         }
+        if (!map.canOccupyWithoutBlockingRoutes(targetRow, targetCol)) {
+            return PLACEMENT_REJECTED_UNBUILDABLE;
+        }
         if (!hasAccessibleApproach(targetRow, targetCol)) {
             return PLACEMENT_REJECTED_UNBUILDABLE;
         }
         if (type.requiredTechId != TechNode.NONE && !techUnlocked[type.requiredTechId]) {
             return PLACEMENT_REJECTED_TECH;
+        }
+        if (!isBuildingUnlocked(buildingTypeId)) {
+            return PLACEMENT_REJECTED_PROGRESSION;
         }
         if (type.requiredAdjacentTerrain != TerrainType.NONE
                 && !map.hasAdjacentTerrain(targetRow, targetCol, type.requiredAdjacentTerrain)) {
@@ -372,6 +402,9 @@ final class KingdomWorld {
     private void updateWorkers(float elapsedSeconds) {
         dispatchWaitingConstruction();
         for (WorkerKitten worker : workers) {
+            if (worker.state == WorkerKitten.DIPLOMACY) {
+                continue;
+            }
             if (worker.isMoving()) {
                 advanceWorker(worker, elapsedSeconds);
             }
@@ -594,8 +627,8 @@ final class KingdomWorld {
         PlacedBuilding best = null;
         int bestLength = Integer.MAX_VALUE;
         for (PlacedBuilding building : buildings) {
-            if (!building.isComplete() || (building.typeId != BuildingType.TOWN_HALL
-                    && building.typeId != BuildingType.STORAGE_BARN)) {
+            if (!building.isComplete()
+                    || buildingTypes[building.typeId].storageCapBonus <= 0) {
                 continue;
             }
             ArrayDeque<Integer> route = GridPathfinder.besideCell(
@@ -654,7 +687,8 @@ final class KingdomWorld {
         if (techId < 0 || techId >= TechNode.COUNT || techUnlocked[techId]) {
             return false;
         }
-        if (!TechNode.prerequisitesMet(techNodes[techId], techUnlocked)) {
+        if (!TechNode.conditionsMet(techNodes[techId], techUnlocked, turn, population,
+                resources, getBuildingCountSnapshot())) {
             return false;
         }
         activeTechId = techId;
@@ -704,8 +738,18 @@ final class KingdomWorld {
         for (int resource = 0; resource < ResourceType.COUNT; resource++) {
             delta[resource] += diplomacyReport.resourceDelta[resource];
         }
-        if (listener != null) {
-            for (int settlement = 0; settlement < Settlement.COUNT; settlement++) {
+        for (int settlement = 0; settlement < Settlement.COUNT; settlement++) {
+            if ((diplomacyReport.events[settlement]
+                    & DiplomacySystem.EVENT_ENVOY_RETURNED) != 0) {
+                returnDiplomaticWorker(envoyWorkerIds[settlement]);
+                envoyWorkerIds[settlement] = BuildingType.NONE;
+            }
+            if ((diplomacyReport.events[settlement]
+                    & DiplomacySystem.EVENT_COURIER_RETURNED) != 0) {
+                returnDiplomaticWorker(courierWorkerIds[settlement]);
+                courierWorkerIds[settlement] = BuildingType.NONE;
+            }
+            if (listener != null) {
                 if (diplomacyReport.events[settlement] != 0) {
                     listener.onDiplomacyEvent(settlement, diplomacyReport.events[settlement]);
                 }
@@ -771,6 +815,8 @@ final class KingdomWorld {
         data.envoyTurns = diplomacy.envoyTurnsSnapshot();
         data.courierTurns = diplomacy.courierTurnsSnapshot();
         data.tradeRoutes = diplomacy.tradeRoutesSnapshot();
+        data.envoyWorkerIds = envoyWorkerIds.clone();
+        data.courierWorkerIds = courierWorkerIds.clone();
         return data;
     }
 
@@ -816,6 +862,11 @@ final class KingdomWorld {
         turn = Math.max(0, data.turn);
         row = clampCoord(data.kittenRow);
         col = clampCoord(data.kittenCol);
+        if (!map.isWalkable(row, col)) {
+            int[] safeCell = findOpenCellBeside(row, col);
+            row = safeCell[0];
+            col = safeCell[1];
+        }
         visualRow = row;
         visualCol = col;
         facingDirection = DIRECTION_DOWN;
@@ -824,6 +875,7 @@ final class KingdomWorld {
         diplomacy.restore(data.diplomaticRelations, data.envoyTurns,
                 data.courierTurns, data.tradeRoutes);
         restoreWorkers(data.workers);
+        restoreDiplomaticWorkers(data.envoyWorkerIds, data.courierWorkerIds);
         dispatchWaitingConstruction();
     }
 
@@ -911,7 +963,8 @@ final class KingdomWorld {
 
     private boolean isWorkerCellFree(int candidateRow, int candidateCol) {
         for (WorkerKitten worker : workers) {
-            if (worker.row == candidateRow && worker.col == candidateCol) {
+            if (worker.state != WorkerKitten.DIPLOMACY
+                    && worker.row == candidateRow && worker.col == candidateCol) {
                 return false;
             }
         }
@@ -1091,6 +1144,16 @@ final class KingdomWorld {
         return workers.size();
     }
 
+    int getIdleWorkerCount() {
+        int count = 0;
+        for (WorkerKitten worker : workers) {
+            if (worker.isIdleAndUnassigned()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
     int getTurn() {
         return turn;
     }
@@ -1109,6 +1172,30 @@ final class KingdomWorld {
 
     int getResource(int resourceId) {
         return resources[resourceId];
+    }
+
+    int[] getResourceSnapshot() {
+        return resources.clone();
+    }
+
+    int countCompletedBuildings(int typeId) {
+        int count = 0;
+        for (PlacedBuilding building : buildings) {
+            if (building.typeId == typeId && building.isComplete()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    int[] getBuildingCountSnapshot() {
+        int[] counts = new int[BuildingType.COUNT];
+        for (PlacedBuilding building : buildings) {
+            if (building.isComplete()) {
+                counts[building.typeId]++;
+            }
+        }
+        return counts;
     }
 
     int getTechPointPool() {
@@ -1172,16 +1259,62 @@ final class KingdomWorld {
         return diplomacy.getCourierTurns(settlementId);
     }
 
+    int getEnvoyPhase(int settlementId) {
+        return diplomacy.getEnvoyPhase(settlementId);
+    }
+
+    int getCourierPhase(int settlementId) {
+        return diplomacy.getCourierPhase(settlementId);
+    }
+
+    float getEnvoyRouteProgress(int settlementId) {
+        return diplomacy.getEnvoyRouteProgress(settlementId);
+    }
+
+    float getCourierRouteProgress(int settlementId) {
+        return diplomacy.getCourierRouteProgress(settlementId);
+    }
+
+    int getEnvoyWorkerId(int settlementId) {
+        return envoyWorkerIds[settlementId];
+    }
+
+    int getCourierWorkerId(int settlementId) {
+        return courierWorkerIds[settlementId];
+    }
+
     boolean hasTradeRoute(int settlementId) {
         return diplomacy.hasTradeRoute(settlementId);
     }
 
     int sendEnvoy(int settlementId) {
-        return diplomacy.sendEnvoy(settlementId);
+        int result = diplomacy.sendEnvoy(settlementId);
+        if (result != DiplomacySystem.ACTION_OK) {
+            return result;
+        }
+        WorkerKitten worker = firstIdleWorker();
+        if (worker == null) {
+            diplomacy.cancelEnvoy(settlementId);
+            return DiplomacySystem.ACTION_NEEDS_WORKER;
+        }
+        reserveDiplomaticWorker(worker);
+        envoyWorkerIds[settlementId] = worker.id;
+        return DiplomacySystem.ACTION_OK;
     }
 
     int sendCourier(int settlementId) {
-        return diplomacy.sendCourier(settlementId);
+        int result = diplomacy.sendCourier(settlementId);
+        if (result != DiplomacySystem.ACTION_OK) {
+            return result;
+        }
+        WorkerKitten worker = firstIdleWorker();
+        if (worker == null) {
+            diplomacy.cancelCourier(settlementId);
+            return DiplomacySystem.ACTION_NEEDS_WORKER;
+        }
+        reserveDiplomaticWorker(worker);
+        courierWorkerIds[settlementId] = worker.id;
+        return DiplomacySystem.ACTION_OK;
     }
 
     int giveGift(int settlementId) {
@@ -1190,5 +1323,82 @@ final class KingdomWorld {
 
     int establishTradeRoute(int settlementId) {
         return diplomacy.establishTradeRoute(settlementId, resources);
+    }
+
+    private void reserveDiplomaticWorker(WorkerKitten worker) {
+        worker.path.clear();
+        worker.assignedBuildingId = BuildingType.NONE;
+        worker.taskBuildingId = BuildingType.NONE;
+        worker.carriedResourceId = ResourceType.NONE;
+        worker.carriedAmount = 0;
+        worker.actionTimer = 0f;
+        worker.state = WorkerKitten.DIPLOMACY;
+    }
+
+    private void returnDiplomaticWorker(int workerId) {
+        WorkerKitten worker = findWorker(workerId);
+        if (worker == null) {
+            return;
+        }
+        PlacedBuilding hall = null;
+        for (PlacedBuilding building : buildings) {
+            if (building.typeId == BuildingType.TOWN_HALL) {
+                hall = building;
+                break;
+            }
+        }
+        int[] home = hall == null ? findOpenCellBeside(row, col)
+                : findOpenCellBeside(hall.row, hall.col);
+        worker.row = home[0];
+        worker.col = home[1];
+        worker.visualRow = home[0];
+        worker.visualCol = home[1];
+        worker.state = WorkerKitten.IDLE;
+        dispatchWaitingConstruction();
+    }
+
+    private WorkerKitten findWorker(int workerId) {
+        for (WorkerKitten worker : workers) {
+            if (worker.id == workerId) {
+                return worker;
+            }
+        }
+        return null;
+    }
+
+    private void restoreDiplomaticWorkers(int[] restoredEnvoyWorkers,
+            int[] restoredCourierWorkers) {
+        Arrays.fill(envoyWorkerIds, BuildingType.NONE);
+        Arrays.fill(courierWorkerIds, BuildingType.NONE);
+        for (int settlement = 0; settlement < Settlement.COUNT; settlement++) {
+            if (diplomacy.getEnvoyTurns(settlement) > 0) {
+                WorkerKitten worker = restoredMissionWorker(restoredEnvoyWorkers, settlement);
+                if (worker == null) {
+                    diplomacy.cancelEnvoy(settlement);
+                } else {
+                    reserveDiplomaticWorker(worker);
+                    envoyWorkerIds[settlement] = worker.id;
+                }
+            }
+            if (diplomacy.getCourierTurns(settlement) > 0) {
+                WorkerKitten worker = restoredMissionWorker(restoredCourierWorkers, settlement);
+                if (worker == null) {
+                    diplomacy.cancelCourier(settlement);
+                } else {
+                    reserveDiplomaticWorker(worker);
+                    courierWorkerIds[settlement] = worker.id;
+                }
+            }
+        }
+    }
+
+    private WorkerKitten restoredMissionWorker(int[] restoredIds, int settlement) {
+        if (restoredIds != null && settlement < restoredIds.length) {
+            WorkerKitten restored = findWorker(restoredIds[settlement]);
+            if (restored != null && restored.state != WorkerKitten.DIPLOMACY) {
+                return restored;
+            }
+        }
+        return firstIdleWorker();
     }
 }

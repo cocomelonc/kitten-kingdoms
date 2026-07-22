@@ -78,6 +78,8 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     private static final float MENU_BTN_GAP = 14f;
     private static final float MENU_TOP = 226f;
     private static final float NOTIFICATION_DURATION = 2.4f;
+    private static final int BUILDINGS_PER_PAGE = 4;
+    private static final float OVERLAY_SWIPE_THRESHOLD = 72f;
     private static final int WILDLIFE_PER_SPECIES = 2;
     private static final int WILDLIFE_VISIBLE_RADIUS = 6;
     private static final String PREFS = "kitten_kingdoms_progress";
@@ -122,6 +124,9 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     private float downCameraY;
     private boolean isDragging;
     private boolean multiTouchOccurred;
+    private float overlayDownX;
+    private float overlayDownY;
+    private int buildMenuPage;
     private Overlay activeOverlay = Overlay.NONE;
     private KingdomWorld.State lastVisualState = KingdomWorld.State.TITLE;
     private float overlayProgress = 1f;
@@ -383,6 +388,9 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         }
 
         for (WorkerKitten worker : world.getWorkers()) {
+            if (worker.state == WorkerKitten.DIPLOMACY) {
+                continue;
+            }
             int workerRow = (int) worker.visualRow;
             int workerCol = (int) worker.visualCol;
             if (workerRow < firstRow || workerRow > lastRow
@@ -436,7 +444,7 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     private void drawTile(Canvas canvas, WorldMap map, int row, int col) {
         float left = col * TILE;
         float top = row * TILE;
-        int seedValue = (int) (WorldMap.TERRAIN_SEED % 9973) + row * 131 + col * 17;
+        int seedValue = map.visualSeedAt(row, col);
         if (!map.isExplored(row, col)) {
             canvas.drawBitmap(sprites.fogTile(seedValue), left, top, spritePaint);
             paint.setColor(0xB85F6670);
@@ -489,7 +497,7 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
             canvas.drawArc(cx - 25f, cy - 25f, cx + 25f, cy + 25f, -90f, sweep, false, paint);
             paint.setStyle(Paint.Style.FILL);
         }
-        if (!type.playerBuildable && world.isTechUnlocked(TechNode.KINGDOM_CHARTER)) {
+        if (typeId == BuildingType.TOWN_HALL && world.isTechUnlocked(TechNode.KINGDOM_CHARTER)) {
             paint.setColor(0xFFE9B65C);
             path.reset();
             path.moveTo(cx - 10f, cy - 28f);
@@ -751,15 +759,36 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         }
         paint.setStyle(Paint.Style.FILL);
 
-        if (world.getEnvoyTurns(settlement.id) > 0 || world.getCourierTurns(settlement.id) > 0) {
-            float progress = (time * 0.18f + settlement.id * 0.21f) % 1f;
-            float x = lerp(homeX, settlement.mapX, progress);
-            float y = lerp(homeY, settlement.mapY, progress);
-            paint.setColor(0xFFFDF6DE);
-            canvas.drawCircle(x, y, 10f, paint);
-            paint.setColor(settlement.color);
-            canvas.drawCircle(x, y, 6f, paint);
+        drawMissionKitten(canvas, homeX, homeY, settlement, time,
+                world.getEnvoyWorkerId(settlement.id), world.getEnvoyPhase(settlement.id),
+                world.getEnvoyRouteProgress(settlement.id), -9f);
+        drawMissionKitten(canvas, homeX, homeY, settlement, time + 0.4f,
+                world.getCourierWorkerId(settlement.id), world.getCourierPhase(settlement.id),
+                world.getCourierRouteProgress(settlement.id), 9f);
+    }
+
+    private void drawMissionKitten(Canvas canvas, float homeX, float homeY, Settlement settlement,
+            float time, int workerId, int phase, float progress, float offset) {
+        if (workerId == BuildingType.NONE || phase == DiplomacySystem.MISSION_NONE) {
+            return;
         }
+        float deltaX = settlement.mapX - homeX;
+        float deltaY = settlement.mapY - homeY;
+        float length = Math.max(1f, (float) Math.hypot(deltaX, deltaY));
+        float visibleProgress = phase == DiplomacySystem.MISSION_VISITING ? 0.86f : progress;
+        float x = lerp(homeX, settlement.mapX, visibleProgress) - deltaY / length * offset;
+        float y = lerp(homeY, settlement.mapY, visibleProgress) + deltaX / length * offset;
+        int direction = deltaX >= 0f ? KittenSprites.RIGHT : KittenSprites.LEFT;
+        if (phase == DiplomacySystem.MISSION_RETURNING) {
+            direction = deltaX >= 0f ? KittenSprites.LEFT : KittenSprites.RIGHT;
+        }
+        paint.setColor(0x70443C2E);
+        canvas.drawOval(x - 17f, y + 13f, x + 17f, y + 20f, paint);
+        Bitmap kitten = kittenSprites.frame(direction, (int) (time * 5f));
+        canvas.drawBitmap(kitten, null, new RectF(x - 22f, y - 25f, x + 22f, y + 19f),
+                spritePaint);
+        paint.setColor(workerColor(workerId));
+        canvas.drawCircle(x + 15f, y - 16f, 5f, paint);
     }
 
     private void drawSettlementNode(Canvas canvas, Settlement settlement) {
@@ -813,14 +842,15 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         drawFittedText(canvas, relation + "/100", center, 275f,
                 15f, 180f, 0xFF74694F, false);
 
-        String travel = "";
-        if (world.getEnvoyTurns(settlement.id) > 0) {
-            travel = quantityText(R.plurals.envoy_arrives_in, world.getEnvoyTurns(settlement.id));
-        } else if (world.getCourierTurns(settlement.id) > 0) {
-            travel = quantityText(R.plurals.courier_arrives_in, world.getCourierTurns(settlement.id));
+        String envoyStatus = missionStatus(world.getEnvoyWorkerId(settlement.id),
+                world.getEnvoyPhase(settlement.id));
+        String courierStatus = missionStatus(world.getCourierWorkerId(settlement.id),
+                world.getCourierPhase(settlement.id));
+        if (!envoyStatus.isEmpty()) {
+            drawFittedText(canvas, envoyStatus, center, 291f, 14f, 320f, settlement.color, true);
         }
-        if (!travel.isEmpty()) {
-            drawFittedText(canvas, travel, center, 299f, 15f, 320f, settlement.color, true);
+        if (!courierStatus.isEmpty()) {
+            drawFittedText(canvas, courierStatus, center, 308f, 13f, 320f, settlement.color, true);
         }
 
         int requested = settlement.requestedResource;
@@ -828,12 +858,13 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         String exchange = String.format(text(R.string.trade_exchange),
                 DiplomacySystem.TRADE_EXPORT_AMOUNT, resourceName(requested),
                 DiplomacySystem.TRADE_IMPORT_AMOUNT, resourceName(offered));
-        drawFittedText(canvas, exchange, center, 323f, 14f, 325f, 0xFF74694F, false);
+        drawFittedText(canvas, exchange, center, 330f, 14f, 325f, 0xFF74694F, false);
 
         drawDiplomacyButton(canvas, center, 360f, text(R.string.send_envoy),
-                world.getEnvoyTurns(settlement.id) == 0);
+                world.getEnvoyTurns(settlement.id) == 0 && world.getIdleWorkerCount() > 0);
         drawDiplomacyButton(canvas, center, 410f, text(R.string.send_courier),
-                world.getCourierTurns(settlement.id) == 0 && relation >= 15);
+                world.getCourierTurns(settlement.id) == 0 && relation >= 15
+                        && world.getIdleWorkerCount() > 0);
         String gift = text(R.string.give_gift) + " · "
                 + String.format(text(R.string.gift_cost), DiplomacySystem.GIFT_AMOUNT, resourceName(requested));
         drawDiplomacyButton(canvas, center, 460f, gift,
@@ -858,6 +889,21 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
                 enabled ? 0xFFE8D7AC : 0xFFE8E4D8, 0x183E3226);
         drawFittedText(canvas, label, cx, cy + 6f, 15f, 305f,
                 enabled ? 0xFF443C2E : 0xFF9A9284, true);
+    }
+
+    private String missionStatus(int workerId, int phase) {
+        if (workerId == BuildingType.NONE || phase == DiplomacySystem.MISSION_NONE) {
+            return "";
+        }
+        int resource;
+        if (phase == DiplomacySystem.MISSION_OUTBOUND) {
+            resource = R.string.mission_outbound;
+        } else if (phase == DiplomacySystem.MISSION_VISITING) {
+            resource = R.string.mission_visiting;
+        } else {
+            resource = R.string.mission_returning;
+        }
+        return String.format(text(resource), workerId + 1);
     }
 
     private int relationStatusRes(int relation) {
@@ -902,6 +948,8 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
                 return String.format(text(R.string.placement_needs_terrain), text(terrainNameRes(type.requiredAdjacentTerrain)));
             case KingdomWorld.PLACEMENT_REJECTED_COST:
                 return text(R.string.placement_needs_resources);
+            case KingdomWorld.PLACEMENT_REJECTED_PROGRESSION:
+                return text(R.string.placement_needs_progress);
             case KingdomWorld.PLACEMENT_REJECTED_UNBUILDABLE:
             default:
                 return text(R.string.placement_needs_tile);
@@ -925,44 +973,113 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         drawModalCard(canvas);
         drawFittedText(canvas, text(R.string.build_menu_title), (MODAL_LEFT + MODAL_RIGHT) / 2f, MODAL_TOP + 56f,
                 34f, MODAL_RIGHT - MODAL_LEFT - 100f, 0xFF443C2E, true);
-
         BuildingType[] types = world.getBuildingTypes();
-        int columns = 3;
-        int rowCount = (countPlayerBuildableTypes(types) + columns - 1) / columns;
-        float contentLeft = MODAL_LEFT + 60f;
-        float contentTop = MODAL_TOP + 90f;
-        float contentBottom = MODAL_BOTTOM - 80f;
-        float cellWidth = (MODAL_RIGHT - MODAL_LEFT - 120f) / columns;
-        float cellHeight = (contentBottom - contentTop) / rowCount;
-        float scale = Math.min(1f, cellHeight / 150f);
-        int index = 0;
-        for (BuildingType type : types) {
-            if (!type.playerBuildable) {
-                continue;
-            }
-            int row = index / columns;
-            int col = index % columns;
-            float cx = contentLeft + (col + 0.5f) * cellWidth;
-            float cy = contentTop + row * cellHeight + cellHeight * 0.42f;
-            boolean affordable = world.canAffordBuilding(type.id);
-            drawPill(canvas, cx - cellWidth * 0.44f, cy - 58f * scale, cx + cellWidth * 0.44f, cy + 58f * scale,
-                    affordable ? 0xFFFFFDF6 : 0xFFEDE9DD, 0x14443C2E);
-            canvas.save();
-            canvas.translate(cx, cy - 28f * scale);
-            canvas.scale(1.1f * scale, 1.1f * scale);
-            drawBuildingToken(canvas, type.id, 0f, 0f, false, 0f);
-            canvas.restore();
-            drawFittedText(canvas, text(type.nameRes), cx, cy + 26f * scale, 18f * scale, cellWidth * 0.86f,
-                    affordable ? 0xFF443C2E : 0xFF9A9284, true);
-            drawFittedText(canvas, formatCost(type), cx, cy + 48f * scale, 14f * scale, cellWidth * 0.86f,
-                    affordable ? 0xFF74694F : 0xFFAAA294, false);
-            index++;
-        }
+        int totalPages = buildMenuPageCount(types);
+        buildMenuPage = Math.max(0, Math.min(totalPages - 1, buildMenuPage));
+        drawFittedText(canvas, String.format(text(R.string.page_label), buildMenuPage + 1, totalPages)
+                        + "  ·  " + text(R.string.swipe_hint),
+                640f, MODAL_TOP + 84f, 14f, 620f, 0xFF827764, false);
 
-        drawPill(canvas, (MODAL_LEFT + MODAL_RIGHT) / 2f - 90f, MODAL_BOTTOM - 60f,
-                (MODAL_LEFT + MODAL_RIGHT) / 2f + 90f, MODAL_BOTTOM - 20f, 0xFFE9DDCB, 0x1E443C2E);
+        for (int slot = 0; slot < BUILDINGS_PER_PAGE; slot++) {
+            BuildingType type = playerBuildableTypeAt(types,
+                    buildMenuPage * BUILDINGS_PER_PAGE + slot);
+            if (type == null) {
+                break;
+            }
+            float left = 130f + (slot % 2) * 525f;
+            float top = 172f + (slot / 2) * 205f;
+            drawBuildingCard(canvas, type, left, top, 495f, 182f);
+        }
+        drawPageArrow(canvas, 142f, MODAL_BOTTOM - 40f, false, buildMenuPage > 0);
+        drawPageArrow(canvas, 1138f, MODAL_BOTTOM - 40f, true,
+                buildMenuPage + 1 < totalPages);
+        drawPill(canvas, 550f, MODAL_BOTTOM - 62f, 730f, MODAL_BOTTOM - 18f,
+                0xFFE9DDCB, 0x1E443C2E);
         drawFittedText(canvas, text(R.string.cancel), (MODAL_LEFT + MODAL_RIGHT) / 2f, MODAL_BOTTOM - 32f,
                 20f, 160f, 0xFF443C2E, true);
+    }
+
+    private void drawBuildingCard(Canvas canvas, BuildingType type, float left, float top,
+            float width, float height) {
+        boolean unlocked = world.isBuildingUnlocked(type.id);
+        boolean affordable = world.canAffordBuilding(type.id);
+        paint.setColor(0x20443C2E);
+        canvas.drawRoundRect(left + 3f, top + 4f, left + width + 3f,
+                top + height + 4f, 25f, 25f, paint);
+        paint.setColor(affordable ? 0xFFFFFDF6 : unlocked ? 0xFFF4EFE3 : 0xFFE5E1D7);
+        canvas.drawRoundRect(left, top, left + width, top + height, 25f, 25f, paint);
+        paint.setColor(unlocked ? 0xFFF1E6CC : 0xFFD8D4CA);
+        canvas.drawRoundRect(left + 16f, top + 18f, left + 136f, top + 138f, 22f, 22f, paint);
+        Bitmap icon = sprites.buildingFor(type.id);
+        spritePaint.setAlpha(unlocked ? 255 : 135);
+        canvas.drawBitmap(icon, null, new RectF(left + 37f, top + 37f,
+                left + 115f, top + 115f), spritePaint);
+        spritePaint.setAlpha(255);
+        drawFittedText(canvas, text(type.nameRes), left + 315f, top + 43f,
+                22f, 325f, unlocked ? 0xFF443C2E : 0xFF8E8678, true);
+        drawFittedText(canvas, formatBuildingEffect(type), left + 315f, top + 73f,
+                14f, 325f, 0xFF736957, false);
+        drawFittedText(canvas, formatCost(type), left + 315f, top + 104f,
+                14f, 325f, affordable ? 0xFF5B714D : 0xFF9B7566, true);
+        drawFittedText(canvas, formatBuildingRequirement(type), left + 315f, top + 135f,
+                13f, 325f, unlocked ? 0xFF827764 : 0xFFA06F5E, false);
+        drawFittedText(canvas, unlocked ? (affordable ? text(R.string.building_ready)
+                        : text(R.string.placement_needs_resources)) : text(R.string.building_locked),
+                left + 315f, top + 163f, 13f, 325f,
+                affordable ? 0xFF55764B : 0xFF948878, true);
+    }
+
+    private String formatBuildingEffect(BuildingType type) {
+        int output = world.getOutputResourceId(type.id);
+        if (output != ResourceType.NONE) {
+            return String.format(text(R.string.building_produces), type.outputPerTurn[output],
+                    resourceName(output));
+        }
+        if (type.housing > 0) {
+            return String.format(text(R.string.building_housing), type.housing);
+        }
+        if (type.techPointsPerTurn > 0) {
+            return String.format(text(R.string.building_science), type.techPointsPerTurn);
+        }
+        if (type.storageCapBonus > 0) {
+            return String.format(text(R.string.building_storage), type.storageCapBonus);
+        }
+        return String.format(text(R.string.building_growth),
+                type.populationGrowthThresholdReduction);
+    }
+
+    private String formatBuildingRequirement(BuildingType type) {
+        List<String> requirements = new ArrayList<>();
+        if (type.requiredTechId != TechNode.NONE) {
+            requirements.add(String.format(text(R.string.requires_technology),
+                    text(world.getTechNodes()[type.requiredTechId].nameRes)));
+        }
+        if (type.minTurn > 0) {
+            requirements.add(String.format(text(R.string.requires_turn), type.minTurn));
+        }
+        if (type.minPopulation > 0) {
+            requirements.add(String.format(text(R.string.requires_population), type.minPopulation));
+        }
+        if (type.requiredBuildingTypeId != BuildingType.NONE) {
+            requirements.add(String.format(text(R.string.requires_buildings),
+                    type.requiredBuildingCount,
+                    text(world.getBuildingTypes()[type.requiredBuildingTypeId].nameRes)));
+        }
+        return requirements.isEmpty() ? text(R.string.available_from_start)
+                : android.text.TextUtils.join(" · ", requirements);
+    }
+
+    private void drawPageArrow(Canvas canvas, float cx, float cy, boolean right, boolean enabled) {
+        paint.setColor(enabled ? 0xFFE8D7AC : 0xFFE4E0D6);
+        canvas.drawCircle(cx, cy, 27f, paint);
+        paint.setColor(enabled ? 0xFF443C2E : 0xFFAAA294);
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(4f);
+        paint.setStrokeCap(Paint.Cap.ROUND);
+        float sign = right ? 1f : -1f;
+        canvas.drawLine(cx - 7f * sign, cy - 10f, cx + 5f * sign, cy, paint);
+        canvas.drawLine(cx + 5f * sign, cy, cx - 7f * sign, cy + 10f, paint);
+        paint.setStyle(Paint.Style.FILL);
     }
 
     private int countPlayerBuildableTypes(BuildingType[] types) {
@@ -973,6 +1090,26 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
             }
         }
         return count;
+    }
+
+    private int buildMenuPageCount(BuildingType[] types) {
+        return Math.max(1, (countPlayerBuildableTypes(types) + BUILDINGS_PER_PAGE - 1)
+                / BUILDINGS_PER_PAGE);
+    }
+
+    private BuildingType playerBuildableTypeAt(BuildingType[] types, int requestedIndex) {
+        int index = 0;
+        for (int typeId = 1; typeId <= BuildingType.COUNT; typeId++) {
+            BuildingType type = types[typeId % BuildingType.COUNT];
+            if (!type.playerBuildable) {
+                continue;
+            }
+            if (index == requestedIndex) {
+                return type;
+            }
+            index++;
+        }
+        return null;
     }
 
     private String formatCost(BuildingType type) {
@@ -1085,6 +1222,8 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
                 return text(R.string.worker_working);
             case WorkerKitten.TO_STORAGE:
                 return text(R.string.worker_delivering);
+            case WorkerKitten.DIPLOMACY:
+                return text(R.string.worker_travelling);
             default:
                 return text(R.string.worker_idle);
         }
@@ -1379,8 +1518,19 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         }
 
         if (activeOverlay != Overlay.NONE) {
-            if (event.getActionMasked() == MotionEvent.ACTION_UP) {
-                handleOverlayTap(toLogicalX(event.getX()), toLogicalY(event.getY()));
+            if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                overlayDownX = toLogicalX(event.getX());
+                overlayDownY = toLogicalY(event.getY());
+            } else if (event.getActionMasked() == MotionEvent.ACTION_UP) {
+                float logicalX = toLogicalX(event.getX());
+                float logicalY = toLogicalY(event.getY());
+                if (activeOverlay == Overlay.BUILD_MENU
+                        && Math.abs(logicalX - overlayDownX) >= OVERLAY_SWIPE_THRESHOLD
+                        && Math.abs(logicalY - overlayDownY) < 150f) {
+                    changeBuildMenuPage(logicalX < overlayDownX ? 1 : -1);
+                } else {
+                    handleOverlayTap(logicalX, logicalY);
+                }
             }
             return true;
         }
@@ -1646,6 +1796,10 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
             case DiplomacySystem.ACTION_ROUTE_EXISTS:
                 messageRes = R.string.diplomacy_route_exists;
                 break;
+            case DiplomacySystem.ACTION_NEEDS_WORKER:
+                messageRes = R.string.diplomacy_needs_worker;
+                performHapticFeedback(HapticFeedbackConstants.REJECT);
+                break;
             case DiplomacySystem.ACTION_INVALID:
             default:
                 return;
@@ -1655,24 +1809,24 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
 
     private void handleBuildMenuTap(float logicalX, float logicalY) {
         BuildingType[] types = world.getBuildingTypes();
-        int columns = 3;
-        int rowCount = (countPlayerBuildableTypes(types) + columns - 1) / columns;
-        float contentLeft = MODAL_LEFT + 60f;
-        float contentTop = MODAL_TOP + 90f;
-        float contentBottom = MODAL_BOTTOM - 80f;
-        float cellWidth = (MODAL_RIGHT - MODAL_LEFT - 120f) / columns;
-        float cellHeight = (contentBottom - contentTop) / rowCount;
-        float scale = Math.min(1f, cellHeight / 150f);
-        int index = 0;
-        for (BuildingType type : types) {
-            if (!type.playerBuildable) {
-                continue;
+        if (Math.hypot(logicalX - 142f, logicalY - (MODAL_BOTTOM - 40f)) <= 38f) {
+            changeBuildMenuPage(-1);
+            return;
+        }
+        if (Math.hypot(logicalX - 1138f, logicalY - (MODAL_BOTTOM - 40f)) <= 38f) {
+            changeBuildMenuPage(1);
+            return;
+        }
+        for (int slot = 0; slot < BUILDINGS_PER_PAGE; slot++) {
+            BuildingType type = playerBuildableTypeAt(types,
+                    buildMenuPage * BUILDINGS_PER_PAGE + slot);
+            if (type == null) {
+                break;
             }
-            int row = index / columns;
-            int col = index % columns;
-            float cx = contentLeft + (col + 0.5f) * cellWidth;
-            float cy = contentTop + row * cellHeight + cellHeight * 0.42f;
-            if (isInsidePill(logicalX, logicalY, cx, cy, cellWidth * 0.44f, 58f * scale)) {
+            float left = 130f + (slot % 2) * 525f;
+            float top = 172f + (slot / 2) * 205f;
+            if (logicalX >= left && logicalX <= left + 495f
+                    && logicalY >= top && logicalY <= top + 182f) {
                 if (world.canAffordBuilding(type.id)) {
                     world.selectBuildingForPlacement(type.id);
                     activeOverlay = Overlay.NONE;
@@ -1680,8 +1834,19 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
                 }
                 return;
             }
-            index++;
         }
+    }
+
+    private void changeBuildMenuPage(int delta) {
+        int pageCount = buildMenuPageCount(world.getBuildingTypes());
+        int next = Math.max(0, Math.min(pageCount - 1, buildMenuPage + delta));
+        if (next == buildMenuPage) {
+            return;
+        }
+        buildMenuPage = next;
+        audio.playPageTurn();
+        performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
+        invalidate();
     }
 
     private void handleWorldTap(float logicalX, float logicalY) {
@@ -1797,10 +1962,6 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         return localizedContext.getString(resource);
     }
 
-    private String quantityText(int resource, int quantity) {
-        return localizedContext.getResources().getQuantityString(resource, quantity, quantity);
-    }
-
     private void loadAndContinue() {
         try (InputStream in = new FileInputStream(saveFile)) {
             KingdomSaveData data = KingdomSerializer.read(in);
@@ -1834,6 +1995,10 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         intent.putExtra(TechTreeActivity.EXTRA_TECH_POINTS, world.getTechPointPool());
         intent.putExtra(TechTreeActivity.EXTRA_ACTIVE_TECH, world.getActiveTechId());
         intent.putExtra(TechTreeActivity.EXTRA_UNLOCKED_BITS, world.getTechUnlockedBits());
+        intent.putExtra(TechTreeActivity.EXTRA_TURN, world.getTurn());
+        intent.putExtra(TechTreeActivity.EXTRA_POPULATION, world.getPopulation());
+        intent.putExtra(TechTreeActivity.EXTRA_RESOURCES, world.getResourceSnapshot());
+        intent.putExtra(TechTreeActivity.EXTRA_BUILDING_COUNTS, world.getBuildingCountSnapshot());
         intent.putExtra(TechTreeActivity.EXTRA_LANGUAGE, language);
         ((Activity) getContext()).startActivityForResult(intent, TechTreeActivity.REQUEST_CODE);
     }
@@ -1939,6 +2104,12 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         }
         if ((eventMask & DiplomacySystem.EVENT_COURIER_ARRIVED) != 0) {
             enqueueNotification(String.format(text(R.string.notify_courier_arrived), text(settlement.nameRes)));
+        }
+        if ((eventMask & DiplomacySystem.EVENT_ENVOY_RETURNED) != 0) {
+            enqueueNotification(String.format(text(R.string.notify_envoy_returned), text(settlement.nameRes)));
+        }
+        if ((eventMask & DiplomacySystem.EVENT_COURIER_RETURNED) != 0) {
+            enqueueNotification(String.format(text(R.string.notify_courier_returned), text(settlement.nameRes)));
         }
     }
 

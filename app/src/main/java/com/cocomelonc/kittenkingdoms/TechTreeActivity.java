@@ -25,6 +25,10 @@ public final class TechTreeActivity extends Activity implements TechTreeView.Lis
     static final String EXTRA_ACTIVE_TECH = "active_tech";
     static final String EXTRA_UNLOCKED_BITS = "unlocked_bits";
     static final String EXTRA_LANGUAGE = "language";
+    static final String EXTRA_TURN = "turn";
+    static final String EXTRA_POPULATION = "population";
+    static final String EXTRA_RESOURCES = "resources";
+    static final String EXTRA_BUILDING_COUNTS = "building_counts";
     static final String EXTRA_SELECTED_TECH = "selected_tech";
 
     @Override
@@ -41,9 +45,22 @@ public final class TechTreeActivity extends Activity implements TechTreeView.Lis
             language = "en";
         }
 
-        TechTreeView techTreeView = new TechTreeView(this, techPoints, activeTech, unlockedBits, language, this);
+        techTreeView = new TechTreeView(this, techPoints, activeTech, unlockedBits,
+                intent.getIntExtra(EXTRA_TURN, 0), intent.getIntExtra(EXTRA_POPULATION, 0),
+                intent.getIntArrayExtra(EXTRA_RESOURCES),
+                intent.getIntArrayExtra(EXTRA_BUILDING_COUNTS), language, this);
         setContentView(techTreeView);
         enterImmersiveMode();
+    }
+
+    private TechTreeView techTreeView;
+
+    @Override
+    protected void onDestroy() {
+        if (techTreeView != null) {
+            techTreeView.close();
+        }
+        super.onDestroy();
     }
 
     @Override

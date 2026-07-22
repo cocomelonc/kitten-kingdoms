@@ -28,4 +28,6 @@ final class KingdomSaveData {
     int[] envoyTurns;
     int[] courierTurns;
     boolean[] tradeRoutes;
+    int[] envoyWorkerIds;
+    int[] courierWorkerIds;
 }

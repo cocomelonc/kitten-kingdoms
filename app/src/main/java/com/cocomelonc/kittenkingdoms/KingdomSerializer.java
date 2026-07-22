@@ -19,7 +19,8 @@ import java.util.ArrayList;
  * so the caller can fall back to a fresh kingdom rather than crash.
  */
 final class KingdomSerializer {
-    private static final int SAVE_VERSION = 4;
+    private static final int SAVE_VERSION = 5;
+    private static final int WORKER_SAVE_VERSION = 4;
     private static final int DIPLOMACY_SAVE_VERSION = 3;
     private static final int LEGACY_SAVE_VERSION = 2;
     private static final int MAX_PLAUSIBLE_BUILDINGS = 100_000;
@@ -49,14 +50,15 @@ final class KingdomSerializer {
         writeExploredBits(out, data.explored);
         writeDiplomacy(out, data);
         writeWorkers(out, data);
+        writeDiplomaticWorkers(out, data);
         out.flush();
     }
 
     static KingdomSaveData read(InputStream rawIn) throws IOException {
         DataInputStream in = new DataInputStream(rawIn);
         int version = in.readInt();
-        if (version != SAVE_VERSION && version != DIPLOMACY_SAVE_VERSION
-                && version != LEGACY_SAVE_VERSION) {
+        if (version != SAVE_VERSION && version != WORKER_SAVE_VERSION
+                && version != DIPLOMACY_SAVE_VERSION && version != LEGACY_SAVE_VERSION) {
             throw new IOException("Unsupported save version: " + version);
         }
         KingdomSaveData data = new KingdomSaveData();
@@ -77,7 +79,7 @@ final class KingdomSerializer {
         }
         data.buildings = new ArrayList<>(buildingCount);
         for (int i = 0; i < buildingCount; i++) {
-            if (version >= 4) {
+            if (version >= WORKER_SAVE_VERSION) {
                 data.buildings.add(new int[]{in.readInt(), in.readInt(), in.readInt(), in.readInt(),
                         in.readInt(), in.readInt(), in.readInt()});
             } else {
@@ -92,11 +94,47 @@ final class KingdomSerializer {
         data.explored = readExploredBits(in);
         if (version >= 3) {
             readDiplomacy(in, data);
+            if (version < SAVE_VERSION) {
+                migrateLegacyDiplomaticTrips(data);
+            }
         }
-        if (version >= 4) {
+        if (version >= WORKER_SAVE_VERSION) {
             readWorkers(in, data);
         }
+        if (version >= SAVE_VERSION) {
+            readDiplomaticWorkers(in, data);
+        }
         return data;
+    }
+
+    /** Old saves tracked one-way arrival only; preserve that ETA and append the new return leg. */
+    private static void migrateLegacyDiplomaticTrips(KingdomSaveData data) {
+        for (int settlement = 0; settlement < Settlement.COUNT; settlement++) {
+            if (data.envoyTurns[settlement] > 0) {
+                data.envoyTurns[settlement] += 3;
+            }
+            if (data.courierTurns[settlement] > 0) {
+                data.courierTurns[settlement] += 2;
+            }
+        }
+    }
+
+    private static void writeDiplomaticWorkers(DataOutputStream out, KingdomSaveData data)
+            throws IOException {
+        for (int settlement = 0; settlement < Settlement.COUNT; settlement++) {
+            out.writeInt(valueAtOr(data.envoyWorkerIds, settlement, BuildingType.NONE));
+            out.writeInt(valueAtOr(data.courierWorkerIds, settlement, BuildingType.NONE));
+        }
+    }
+
+    private static void readDiplomaticWorkers(DataInputStream in, KingdomSaveData data)
+            throws IOException {
+        data.envoyWorkerIds = new int[Settlement.COUNT];
+        data.courierWorkerIds = new int[Settlement.COUNT];
+        for (int settlement = 0; settlement < Settlement.COUNT; settlement++) {
+            data.envoyWorkerIds[settlement] = in.readInt();
+            data.courierWorkerIds[settlement] = in.readInt();
+        }
     }
 
     private static void writeWorkers(DataOutputStream out, KingdomSaveData data) throws IOException {
@@ -162,6 +200,10 @@ final class KingdomSerializer {
 
     private static int valueAt(int[] values, int index) {
         return index < values.length ? values[index] : 0;
+    }
+
+    private static int valueAtOr(int[] values, int index, int fallback) {
+        return values != null && index < values.length ? values[index] : fallback;
     }
 
     static int packTechBits(boolean[] techUnlocked) {

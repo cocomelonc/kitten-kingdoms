@@ -25,7 +25,7 @@ cannot accidentally mix them with a different terrain renderer.
 ## Original pixel art
 
 The four-direction kitten walk cycle, two-frame rabbit, hedgehog, duckling and
-bee animations, and eleven building icons are original project artwork:
+bee animations, and the eleven base building icons are original project artwork:
 
 - editable sources: `art/source/kitten_walk.svg`, `art/source/wildlife.svg`,
   `art/source/building_icons.svg`
@@ -39,6 +39,9 @@ Quarry, crop rows for the Catnip Farm, yarn and spindle for the Weaver's
 Cottage, a barn and crate for storage, an open book for scholarship, and a
 cave with crystals for mining. They intentionally share the terrain palette
 and 2x pixel scale without reusing ambiguous terrain props as building art.
+The 21 later-tier buildings retain the closest base silhouette and add a tiny
+thematic emblem cut from the same CC0 Kenney sheet. This produces a consistent
+32-card catalogue while keeping production families immediately recognizable.
 
 The adaptive launcher icon uses the same kitten palette and pixel proportions.
 Interface cards, typography, relationship routes, progress bars, shadows, and

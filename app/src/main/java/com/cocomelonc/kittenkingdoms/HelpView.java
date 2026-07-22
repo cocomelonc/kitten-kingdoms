@@ -20,6 +20,8 @@ import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 /** An offline, swipeable comic guide drawn with the same tiles and sprites as the game. */
@@ -367,12 +369,12 @@ final class HelpView extends View {
     private void drawNarration(Canvas canvas, String body, String tip) {
         paint.setColor(0xFFF4EBD7);
         canvas.drawRoundRect(730f, 166f, 1168f, 496f, 30f, 30f, paint);
-        drawWrappedText(canvas, body, 768f, 208f, 362f,
-                20f, 28f, 0xFF554B3A, false, 7);
+        drawWrappedTextInBox(canvas, body, 760f, 188f, 1138f, 386f,
+                20f, 15f, 0xFF554B3A, false, 7);
         paint.setColor(0xFFDCE9CE);
         canvas.drawRoundRect(758f, 402f, 1140f, 474f, 20f, 20f, paint);
-        drawWrappedText(canvas, tip, 782f, 432f, 334f,
-                17f, 23f, 0xFF506348, true, 2);
+        drawWrappedTextInBox(canvas, tip, 780f, 410f, 1118f, 466f,
+                17f, 13f, 0xFF506348, true, 3);
     }
 
     private void drawNavigation(Canvas canvas) {
@@ -548,17 +550,52 @@ final class HelpView extends View {
         canvas.drawText(value, centerX, baseline, paint);
     }
 
-    private void drawWrappedText(Canvas canvas, String value, float left, float top, float maxWidth,
-                                 float textSize, float lineHeight, int color, boolean useBold,
-                                 int maxLines) {
+    private void drawWrappedTextInBox(Canvas canvas, String value,
+                                      float left, float top, float right, float bottom,
+                                      float preferredSize, float minimumSize, int color,
+                                      boolean useBold, int maxLines) {
         paint.setTypeface(useBold ? bold : regular);
         paint.setTextAlign(Paint.Align.LEFT);
-        paint.setTextSize(textSize);
         paint.setColor(color);
         paint.setStyle(Paint.Style.FILL);
+        float textSize = preferredSize;
+        List<String> lines;
+        float lineHeight;
+        while (true) {
+            paint.setTextSize(textSize);
+            lines = wrapLines(value, right - left);
+            lineHeight = textSize * 1.34f;
+            if ((lines.size() <= maxLines && lines.size() * lineHeight <= bottom - top)
+                    || textSize <= minimumSize) {
+                break;
+            }
+            textSize = Math.max(minimumSize, textSize - 0.5f);
+        }
+
+        if (lines.size() > maxLines) {
+            lines = new ArrayList<>(lines.subList(0, maxLines));
+            String last = lines.get(maxLines - 1);
+            while (last.length() > 1 && paint.measureText(last + "…") > right - left) {
+                last = last.substring(0, last.length() - 1);
+            }
+            lines.set(maxLines - 1, last + "…");
+        }
+        lineHeight = textSize * 1.34f;
+        float totalHeight = lines.size() * lineHeight;
+        float baseline = top + (bottom - top - totalHeight) * 0.5f + textSize;
+
+        canvas.save();
+        canvas.clipRect(left, top, right, bottom);
+        for (int index = 0; index < lines.size(); index++) {
+            canvas.drawText(lines.get(index), left, baseline + index * lineHeight, paint);
+        }
+        canvas.restore();
+    }
+
+    private List<String> wrapLines(String value, float maxWidth) {
+        List<String> lines = new ArrayList<>();
         String[] words = value.split(" ");
         StringBuilder line = new StringBuilder();
-        int lineIndex = 0;
         for (String word : words) {
             String candidate = line.length() == 0 ? word : line + " " + word;
             if (paint.measureText(candidate) <= maxWidth || line.length() == 0) {
@@ -566,17 +603,14 @@ final class HelpView extends View {
                 line.append(candidate);
                 continue;
             }
-            canvas.drawText(line.toString(), left, top + lineIndex * lineHeight, paint);
-            lineIndex++;
-            if (lineIndex >= maxLines) {
-                return;
-            }
+            lines.add(line.toString());
             line.setLength(0);
             line.append(word);
         }
-        if (line.length() > 0 && lineIndex < maxLines) {
-            canvas.drawText(line.toString(), left, top + lineIndex * lineHeight, paint);
+        if (line.length() > 0) {
+            lines.add(line.toString());
         }
+        return lines;
     }
 
     @Override

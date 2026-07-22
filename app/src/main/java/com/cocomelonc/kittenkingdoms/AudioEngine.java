@@ -42,6 +42,10 @@ final class AudioEngine {
         play(new float[]{base, base * 1.2f}, 0.22f, 0.075f);
     }
 
+    void playPageTurn() {
+        play(new float[]{659.25f, 783.99f}, 0.14f, 0.055f);
+    }
+
     private void play(float[] frequencies, float durationSeconds, float volume) {
         if (closed) {
             return;

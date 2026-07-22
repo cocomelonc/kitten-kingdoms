@@ -11,6 +11,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.RectF;
 import android.util.SparseArray;
 
 /**
@@ -24,6 +25,7 @@ final class TerrainSprites {
     private static final int SOURCE_CELL = 16;
     private static final int SOURCE_GAP = 1;
     private static final int OUTPUT_CELL = 64;
+    private static final int ORIGINAL_BUILDING_COUNT = 11;
 
     private static final int GRASS = index(0, 5);
     private static final int GRASS_DARK = index(1, 5);
@@ -156,7 +158,7 @@ final class TerrainSprites {
     Bitmap propFor(int terrainId, int seedValue) {
         switch (terrainId) {
             case TerrainType.FOREST:
-                return Math.floorMod(seedValue, 3) == 0 ? null
+                return !WorldMap.hasForestTreeForVisualSeed(seedValue) ? null
                         : forestProps[Math.floorMod(seedValue / 3, forestProps.length)];
             case TerrainType.STONE_OUTCROP:
                 return Math.floorMod(seedValue, 4) == 0 ? null
@@ -186,17 +188,69 @@ final class TerrainSprites {
         options.inScaled = false;
         Bitmap buildingSheet = BitmapFactory.decodeResource(
                 resources, R.drawable.building_icons, options);
-        int expectedWidth = BuildingType.COUNT * OUTPUT_CELL;
+        int expectedWidth = ORIGINAL_BUILDING_COUNT * OUTPUT_CELL;
         if (buildingSheet == null || buildingSheet.getWidth() != expectedWidth
                 || buildingSheet.getHeight() != OUTPUT_CELL) {
             throw new IllegalStateException("Building sprite sheet must be "
                     + expectedWidth + "x" + OUTPUT_CELL + " pixels");
         }
         Bitmap[] result = new Bitmap[BuildingType.COUNT];
-        for (int buildingId = 0; buildingId < result.length; buildingId++) {
+        for (int buildingId = 0; buildingId < ORIGINAL_BUILDING_COUNT; buildingId++) {
             result[buildingId] = Bitmap.createBitmap(buildingSheet,
                     buildingId * OUTPUT_CELL, 0, OUTPUT_CELL, OUTPUT_CELL);
         }
+        int[] visualFamilies = {
+                BuildingType.FISHING_DOCK, BuildingType.LUMBER_CAMP, BuildingType.QUARRY,
+                BuildingType.CATNIP_FARM, BuildingType.WEAVERS_COTTAGE,
+                BuildingType.CRYSTAL_MINE, BuildingType.KITTEN_COTTAGE,
+                BuildingType.STORAGE_BARN, BuildingType.SCHOLARS_DEN,
+                BuildingType.COZY_PLAZA, BuildingType.FISHING_DOCK,
+                BuildingType.LUMBER_CAMP, BuildingType.QUARRY, BuildingType.CATNIP_FARM,
+                BuildingType.WEAVERS_COTTAGE, BuildingType.SCHOLARS_DEN,
+                BuildingType.TOWN_HALL, BuildingType.STORAGE_BARN,
+                BuildingType.COZY_PLAZA, BuildingType.CRYSTAL_MINE,
+                BuildingType.SCHOLARS_DEN,
+        };
+        int[] emblemFamilies = {
+                ResourceType.FISH, ResourceType.WOOD, ResourceType.STONE,
+                ResourceType.CATNIP, ResourceType.YARN, ResourceType.CRYSTALS,
+                ResourceType.YARN, ResourceType.STONE, ResourceType.CRYSTALS,
+                ResourceType.CATNIP, ResourceType.FISH, ResourceType.WOOD,
+                ResourceType.STONE, ResourceType.CATNIP, ResourceType.YARN,
+                ResourceType.CRYSTALS, ResourceType.YARN, ResourceType.STONE,
+                ResourceType.CATNIP, ResourceType.CRYSTALS, ResourceType.CRYSTALS,
+        };
+        for (int index = 0; index < visualFamilies.length; index++) {
+            int buildingId = ORIGINAL_BUILDING_COUNT + index;
+            result[buildingId] = decoratedVariant(result[visualFamilies[index]],
+                    index < 10 ? 1 : 2, emblemFamilies[index]);
+        }
+        return result;
+    }
+
+    /** Keeps every tier in the same established sprite family while making upgrades distinct. */
+    private Bitmap decoratedVariant(Bitmap base, int tier, int family) {
+        Bitmap result = Bitmap.createBitmap(OUTPUT_CELL, OUTPUT_CELL, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(result);
+        Paint nearest = new Paint();
+        nearest.setFilterBitmap(false);
+        nearest.setAntiAlias(false);
+        canvas.drawBitmap(base, 0f, 0f, nearest);
+
+        Bitmap emblem;
+        if (family == ResourceType.WOOD) {
+            emblem = forestProps[0];
+        } else if (family == ResourceType.STONE || family == ResourceType.CRYSTALS) {
+            emblem = stoneProps[0];
+        } else if (family == ResourceType.CATNIP || family == ResourceType.YARN) {
+            emblem = grassProps[Math.floorMod(family, grassProps.length)];
+        } else {
+            emblem = waterLily;
+        }
+        float size = tier == 1 ? 19f : 23f;
+        nearest.setAlpha(245);
+        canvas.drawBitmap(emblem, null,
+                new RectF(OUTPUT_CELL - size - 3f, 3f, OUTPUT_CELL - 3f, 3f + size), nearest);
         return result;
     }
 

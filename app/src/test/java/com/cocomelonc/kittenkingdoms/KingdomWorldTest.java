@@ -227,6 +227,47 @@ public final class KingdomWorldTest {
         assertEquals(KingdomWorld.WORKFORCE_POPULATION_LIMIT, world.hireWorker());
     }
 
+    @Test
+    public void envoyUsesARealWorkerAndReturnsItAfterTheRoundTrip() {
+        KingdomWorld world = new KingdomWorld(null);
+        world.beginNewKingdom();
+        assertEquals(2, world.getIdleWorkerCount());
+
+        assertEquals(DiplomacySystem.ACTION_OK,
+                world.sendEnvoy(Settlement.RIVERWHISKER));
+        int envoyId = world.getEnvoyWorkerId(Settlement.RIVERWHISKER);
+        assertTrue(envoyId >= 0);
+        assertEquals(1, world.getIdleWorkerCount());
+        assertEquals(WorkerKitten.DIPLOMACY, workerWithId(world, envoyId).state);
+
+        advanceTurns(world, 5);
+
+        assertEquals(BuildingType.NONE, world.getEnvoyWorkerId(Settlement.RIVERWHISKER));
+        assertEquals(2, world.getIdleWorkerCount());
+        assertEquals(WorkerKitten.IDLE, workerWithId(world, envoyId).state);
+    }
+
+    @Test
+    public void diplomacyCannotInventAWorkerWhenEveryKittenIsAway() {
+        KingdomWorld world = new KingdomWorld(null);
+        world.beginNewKingdom();
+        assertEquals(DiplomacySystem.ACTION_OK, world.sendEnvoy(Settlement.RIVERWHISKER));
+        assertEquals(DiplomacySystem.ACTION_OK, world.sendEnvoy(Settlement.MOSSBELL));
+
+        assertEquals(DiplomacySystem.ACTION_NEEDS_WORKER,
+                world.sendEnvoy(Settlement.CLOVERDOWN));
+        assertEquals(0, world.getEnvoyTurns(Settlement.CLOVERDOWN));
+    }
+
+    private static WorkerKitten workerWithId(KingdomWorld world, int workerId) {
+        for (WorkerKitten worker : world.getWorkers()) {
+            if (worker.id == workerId) {
+                return worker;
+            }
+        }
+        throw new AssertionError("Missing worker " + workerId);
+    }
+
     private static void advanceTurns(KingdomWorld world, int turns) {
         for (int i = 0; i < turns; i++) {
             world.endTurn();

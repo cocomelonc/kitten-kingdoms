@@ -28,12 +28,14 @@ final class WorldMap {
     private final boolean[][] explored;
     private final boolean[][] occupied;
     private final TerrainType[] terrainTypes;
+    private final long terrainSeed;
 
     WorldMap() {
         this(TERRAIN_SEED);
     }
 
     WorldMap(long seed) {
+        terrainSeed = seed;
         terrainTypes = TerrainType.createAll();
         terrain = generateTerrain(seed);
         explored = new boolean[SIZE][SIZE];
@@ -49,7 +51,7 @@ final class WorldMap {
     }
 
     boolean isWalkable(int row, int col) {
-        return inBounds(row, col) && terrainTypes[terrain[row][col]].walkable && !occupied[row][col];
+        return inBounds(row, col) && isTerrainWalkable(row, col) && !occupied[row][col];
     }
 
     boolean isBuildable(int row, int col) {
@@ -64,8 +66,100 @@ final class WorldMap {
         return inBounds(row, col) && occupied[row][col];
     }
 
+    int visualSeedAt(int row, int col) {
+        return visualSeedFor(terrainSeed, row, col);
+    }
+
+    boolean hasBlockingProp(int row, int col) {
+        return inBounds(row, col)
+                && terrain[row][col] == TerrainType.FOREST
+                && hasForestTreeForVisualSeed(visualSeedAt(row, col));
+    }
+
+    static boolean hasForestTreeForVisualSeed(int visualSeed) {
+        return Math.floorMod(visualSeed, 3) != 0;
+    }
+
     void markOccupied(int row, int col) {
         occupied[row][col] = true;
+    }
+
+    /** True when occupying a tile preserves one connected road network and creates no new leaf. */
+    boolean canOccupyWithoutBlockingRoutes(int row, int col) {
+        if (!isWalkable(row, col)) {
+            return false;
+        }
+        occupied[row][col] = true;
+        try {
+            int[] rowStep = {-1, 1, 0, 0};
+            int[] colStep = {0, 0, -1, 1};
+            for (int direction = 0; direction < rowStep.length; direction++) {
+                int neighborRow = row + rowStep[direction];
+                int neighborCol = col + colStep[direction];
+                if (isWalkable(neighborRow, neighborCol)
+                        && walkableNeighborCount(neighborRow, neighborCol) < 2) {
+                    return false;
+                }
+            }
+            return allCurrentWalkableTilesConnected();
+        } finally {
+            occupied[row][col] = false;
+        }
+    }
+
+    private int walkableNeighborCount(int row, int col) {
+        int count = 0;
+        int[] rowStep = {-1, 1, 0, 0};
+        int[] colStep = {0, 0, -1, 1};
+        for (int direction = 0; direction < rowStep.length; direction++) {
+            if (isWalkable(row + rowStep[direction], col + colStep[direction])) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private boolean allCurrentWalkableTilesConnected() {
+        int start = -1;
+        int walkableCount = 0;
+        for (int row = 0; row < SIZE; row++) {
+            for (int col = 0; col < SIZE; col++) {
+                if (!isWalkable(row, col)) {
+                    continue;
+                }
+                walkableCount++;
+                if (start < 0) {
+                    start = encode(row, col);
+                }
+            }
+        }
+        if (start < 0) {
+            return false;
+        }
+
+        boolean[][] reached = new boolean[SIZE][SIZE];
+        ArrayDeque<Integer> queue = new ArrayDeque<>();
+        reached[start / SIZE][start % SIZE] = true;
+        queue.add(start);
+        int reachedCount = 0;
+        int[] rowStep = {-1, 1, 0, 0};
+        int[] colStep = {0, 0, -1, 1};
+        while (!queue.isEmpty()) {
+            int current = queue.removeFirst();
+            int currentRow = current / SIZE;
+            int currentCol = current % SIZE;
+            reachedCount++;
+            for (int direction = 0; direction < rowStep.length; direction++) {
+                int neighborRow = currentRow + rowStep[direction];
+                int neighborCol = currentCol + colStep[direction];
+                if (!isWalkable(neighborRow, neighborCol) || reached[neighborRow][neighborCol]) {
+                    continue;
+                }
+                reached[neighborRow][neighborCol] = true;
+                queue.add(encode(neighborRow, neighborCol));
+            }
+        }
+        return reachedCount == walkableCount;
     }
 
     boolean hasAdjacentTerrain(int row, int col, int terrainId) {
@@ -174,7 +268,8 @@ final class WorldMap {
                         int neighborCol = col + cardinalCol[direction];
                         if (!inBounds(neighborRow, neighborCol)
                                 || visited[neighborRow][neighborCol]
-                                || terrain[neighborRow][neighborCol] != featureTerrain) {
+                                || terrain[neighborRow][neighborCol] != featureTerrain
+                                || isTerrainWalkable(neighborRow, neighborCol)) {
                             continue;
                         }
                         visited[neighborRow][neighborCol] = true;
@@ -213,7 +308,7 @@ final class WorldMap {
     }
 
     private boolean isTerrainWalkable(int row, int col) {
-        return terrainTypes[terrain[row][col]].walkable;
+        return terrainTypes[terrain[row][col]].walkable && !hasBlockingProp(row, col);
     }
 
     private static int encode(int row, int col) {
@@ -249,7 +344,8 @@ final class WorldMap {
         paintRandomTerrain(grid, random, TerrainType.HILL, 9, 3.2f, 5.4f);
         paintRandomTerrain(grid, random, TerrainType.STONE_OUTCROP, 11, 2.5f, 4.3f);
         clearProtectedZone(grid);
-        repairConnectivity(grid);
+        repairConnectivity(grid, seed);
+        removeWalkableDeadEnds(grid, seed);
         return grid;
     }
 
@@ -462,16 +558,16 @@ final class WorldMap {
      * through a lake. Any tiny land island cut off by water is absorbed into that lake; an area
      * enclosed by rock becomes part of the outcrop instead.
      */
-    private static void repairConnectivity(byte[][] grid) {
-        boolean[][] reached = floodFillWalkable(grid);
-        int[] unreached = findUnreachedWalkable(grid, reached);
+    private static void repairConnectivity(byte[][] grid, long seed) {
+        boolean[][] reached = floodFillWalkable(grid, seed);
+        int[] unreached = findUnreachedWalkable(grid, reached, seed);
         while (unreached != null) {
-            absorbUnreachableIsland(grid, reached, unreached[0], unreached[1]);
-            unreached = findUnreachedWalkable(grid, reached);
+            absorbUnreachableIsland(grid, reached, unreached[0], unreached[1], seed);
+            unreached = findUnreachedWalkable(grid, reached, seed);
         }
     }
 
-    private static boolean[][] floodFillWalkable(byte[][] grid) {
+    private static boolean[][] floodFillWalkable(byte[][] grid, long seed) {
         boolean[][] reached = new boolean[SIZE][SIZE];
         ArrayDeque<int[]> queue = new ArrayDeque<>();
         reached[START_ROW][START_COL] = true;
@@ -486,7 +582,7 @@ final class WorldMap {
                 if (nr < 0 || nr >= SIZE || nc < 0 || nc >= SIZE || reached[nr][nc]) {
                     continue;
                 }
-                if (!isRawWalkable(grid, nr, nc)) {
+                if (!isRawWalkable(grid, nr, nc, seed)) {
                     continue;
                 }
                 reached[nr][nc] = true;
@@ -496,10 +592,10 @@ final class WorldMap {
         return reached;
     }
 
-    private static int[] findUnreachedWalkable(byte[][] grid, boolean[][] reached) {
+    private static int[] findUnreachedWalkable(byte[][] grid, boolean[][] reached, long seed) {
         for (int r = 0; r < SIZE; r++) {
             for (int c = 0; c < SIZE; c++) {
-                if (!reached[r][c] && isRawWalkable(grid, r, c)) {
+                if (!reached[r][c] && isRawWalkable(grid, r, c, seed)) {
                     return new int[]{r, c};
                 }
             }
@@ -508,7 +604,7 @@ final class WorldMap {
     }
 
     private static void absorbUnreachableIsland(byte[][] grid, boolean[][] reached,
-            int startRow, int startCol) {
+            int startRow, int startCol, long seed) {
         boolean[][] inIsland = new boolean[SIZE][SIZE];
         List<int[]> island = new ArrayList<>();
         ArrayDeque<int[]> queue = new ArrayDeque<>();
@@ -534,23 +630,72 @@ final class WorldMap {
                 } else if (grid[nr][nc] == TerrainType.STONE_OUTCROP) {
                     stoneBorder++;
                 }
-                if (reached[nr][nc] || inIsland[nr][nc] || !isRawWalkable(grid, nr, nc)) {
+                if (reached[nr][nc] || inIsland[nr][nc]
+                        || !isRawWalkable(grid, nr, nc, seed)) {
                     continue;
                 }
                 inIsland[nr][nc] = true;
                 queue.add(new int[]{nr, nc});
             }
         }
-        byte replacement = waterBorder >= stoneBorder
+        byte replacement = waterBorder > 0 && waterBorder >= stoneBorder
                 ? (byte) TerrainType.WATER : (byte) TerrainType.STONE_OUTCROP;
         for (int[] cell : island) {
             grid[cell[0]][cell[1]] = replacement;
         }
     }
 
-    private static boolean isRawWalkable(byte[][] grid, int row, int col) {
+    private static boolean isRawWalkable(byte[][] grid, int row, int col, long seed) {
         int terrainId = grid[row][col];
-        return terrainId == TerrainType.GRASS || terrainId == TerrainType.FOREST || terrainId == TerrainType.HILL;
+        if (terrainId == TerrainType.FOREST) {
+            return !hasForestTreeForVisualSeed(visualSeedFor(seed, row, col));
+        }
+        return terrainId == TerrainType.GRASS || terrainId == TerrainType.HILL;
+    }
+
+    /** Removes cul-de-sac branches from the final traversable graph without cutting new paths. */
+    private static void removeWalkableDeadEnds(byte[][] grid, long seed) {
+        boolean changed;
+        do {
+            changed = false;
+            boolean[][] remove = new boolean[SIZE][SIZE];
+            for (int row = 0; row < SIZE; row++) {
+                for (int col = 0; col < SIZE; col++) {
+                    if (!isRawWalkable(grid, row, col, seed)
+                            || cardinalWalkableNeighbors(grid, row, col, seed) >= 2) {
+                        continue;
+                    }
+                    remove[row][col] = true;
+                    changed = true;
+                }
+            }
+            for (int row = 0; row < SIZE; row++) {
+                for (int col = 0; col < SIZE; col++) {
+                    if (remove[row][col]) {
+                        grid[row][col] = TerrainType.STONE_OUTCROP;
+                    }
+                }
+            }
+        } while (changed);
+    }
+
+    private static int cardinalWalkableNeighbors(byte[][] grid, int row, int col, long seed) {
+        int count = 0;
+        int[] rowStep = {-1, 1, 0, 0};
+        int[] colStep = {0, 0, -1, 1};
+        for (int direction = 0; direction < rowStep.length; direction++) {
+            int neighborRow = row + rowStep[direction];
+            int neighborCol = col + colStep[direction];
+            if (neighborRow >= 0 && neighborRow < SIZE && neighborCol >= 0 && neighborCol < SIZE
+                    && isRawWalkable(grid, neighborRow, neighborCol, seed)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static int visualSeedFor(long seed, int row, int col) {
+        return (int) (seed % 9973L) + row * 131 + col * 17;
     }
 
     private static void clearProtectedZone(byte[][] grid) {

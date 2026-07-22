@@ -18,8 +18,9 @@ import java.util.List;
 
 public final class TechTreeReachabilityTest {
     @Test
-    public void registryContainsExactlyNineOrderedEntries() {
+    public void registryContainsExactlyTwentyFourOrderedEntries() {
         TechNode[] all = TechNode.createAll();
+        assertEquals(24, TechNode.COUNT);
         assertEquals(TechNode.COUNT, all.length);
         for (int i = 0; i < all.length; i++) {
             assertEquals(i, all[i].id);
@@ -113,6 +114,27 @@ public final class TechTreeReachabilityTest {
         assertFalse(TechNode.prerequisitesMet(all[TechNode.CURIOUS_MINDS], unlocked));
         unlocked[TechNode.TEXTILE_CRAFT] = true;
         assertTrue(TechNode.prerequisitesMet(all[TechNode.CURIOUS_MINDS], unlocked));
+    }
+
+    @Test
+    public void laterTechnologyChecksTimePopulationResourcesAndBuildings() {
+        TechNode forestry = TechNode.createAll()[TechNode.FORESTRY];
+        boolean[] unlocked = new boolean[TechNode.COUNT];
+        unlocked[TechNode.BASIC_TOOLS] = true;
+        int[] resources = new int[ResourceType.COUNT];
+        resources[ResourceType.WOOD] = 12;
+        int[] buildings = new int[BuildingType.COUNT];
+        buildings[BuildingType.LUMBER_CAMP] = 1;
+
+        assertFalse(TechNode.conditionsMet(forestry, unlocked, 6, 3, resources, buildings));
+        assertFalse(TechNode.conditionsMet(forestry, unlocked, 7, 2, resources, buildings));
+        resources[ResourceType.WOOD] = 11;
+        assertFalse(TechNode.conditionsMet(forestry, unlocked, 7, 3, resources, buildings));
+        resources[ResourceType.WOOD] = 12;
+        buildings[BuildingType.LUMBER_CAMP] = 0;
+        assertFalse(TechNode.conditionsMet(forestry, unlocked, 7, 3, resources, buildings));
+        buildings[BuildingType.LUMBER_CAMP] = 1;
+        assertTrue(TechNode.conditionsMet(forestry, unlocked, 7, 3, resources, buildings));
     }
 
     private static List<List<Integer>> buildUnlocksAdjacency(TechNode[] all) {

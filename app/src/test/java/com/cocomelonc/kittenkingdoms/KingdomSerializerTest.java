@@ -46,6 +46,8 @@ public final class KingdomSerializerTest {
         original.envoyTurns = new int[]{0, 1, 2, 0};
         original.courierTurns = new int[]{1, 0, 0, 1};
         original.tradeRoutes = new boolean[]{true, false, true, false};
+        original.envoyWorkerIds = new int[]{-1, 0, 2, -1};
+        original.courierWorkerIds = new int[]{1, -1, -1, 3};
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         KingdomSerializer.write(original, out);
@@ -72,6 +74,8 @@ public final class KingdomSerializerTest {
         assertArrayEquals(original.envoyTurns, restored.envoyTurns);
         assertArrayEquals(original.courierTurns, restored.courierTurns);
         assertArrayEquals(original.tradeRoutes, restored.tradeRoutes);
+        assertArrayEquals(original.envoyWorkerIds, restored.envoyWorkerIds);
+        assertArrayEquals(original.courierWorkerIds, restored.courierWorkerIds);
     }
 
     @Test
@@ -153,5 +157,60 @@ public final class KingdomSerializerTest {
         assertEquals(BuildingType.TOWN_HALL, world.getBuildings().get(0).typeId);
         assertEquals(2, world.getWorkerCount());
         assertEquals(20, world.getRelation(Settlement.RIVERWHISKER));
+    }
+
+    @Test
+    public void versionFourOneWayEnvoyMigratesToAWorkerRoundTrip() throws IOException {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        DataOutputStream out = new DataOutputStream(bytes);
+        out.writeInt(4);
+        out.writeInt(9);
+        out.writeInt(WorldMap.START_ROW);
+        out.writeInt(WorldMap.START_COL);
+        out.writeInt(2);
+        out.writeInt(0);
+        out.writeInt(TechNode.NONE);
+        out.writeInt(0);
+        for (int resource = 0; resource < ResourceType.COUNT; resource++) {
+            out.writeInt(0);
+        }
+        out.writeInt(1);
+        out.writeInt(0);
+        out.writeInt(BuildingType.TOWN_HALL);
+        out.writeInt(WorldMap.START_ROW);
+        out.writeInt(WorldMap.START_COL);
+        out.writeInt(0);
+        out.writeInt(ResourceType.NONE);
+        out.writeInt(0);
+        out.write(new byte[(WorldMap.SIZE * WorldMap.SIZE + 7) / 8]);
+        out.writeInt(Settlement.COUNT);
+        for (int settlement = 0; settlement < Settlement.COUNT; settlement++) {
+            out.writeInt(settlement == Settlement.RIVERWHISKER ? 18 : 10);
+            out.writeInt(settlement == Settlement.RIVERWHISKER ? 2 : 0);
+            out.writeInt(0);
+            out.writeBoolean(false);
+        }
+        out.writeInt(2);
+        for (int worker = 0; worker < 2; worker++) {
+            out.writeInt(worker);
+            out.writeInt(WorldMap.START_ROW - 1);
+            out.writeInt(WorldMap.START_COL + worker);
+            out.writeInt(BuildingType.NONE);
+            out.writeInt(ResourceType.NONE);
+            out.writeInt(0);
+        }
+
+        KingdomSaveData migrated = KingdomSerializer.read(
+                new ByteArrayInputStream(bytes.toByteArray()));
+        assertEquals(5, migrated.envoyTurns[Settlement.RIVERWHISKER]);
+        KingdomWorld world = new KingdomWorld(null);
+        world.continueKingdom(migrated);
+        assertEquals(1, world.getIdleWorkerCount());
+
+        for (int turn = 0; turn < 5; turn++) {
+            world.endTurn();
+        }
+        assertEquals(30, world.getRelation(Settlement.RIVERWHISKER));
+        assertEquals(2, world.getIdleWorkerCount());
     }
 }

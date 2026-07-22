@@ -17,6 +17,7 @@ final class WorkerKitten {
     static final int WORKING = 4;
     static final int COLLECTING = 5;
     static final int TO_STORAGE = 6;
+    static final int DIPLOMACY = 7;
 
     final int id;
     final ArrayDeque<Integer> path = new ArrayDeque<>();

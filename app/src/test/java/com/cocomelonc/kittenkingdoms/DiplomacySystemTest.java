@@ -14,21 +14,30 @@ import org.junit.Test;
 
 public final class DiplomacySystemTest {
     @Test
-    public void envoyTakesTwoTurnsAndThenBuildsTrust() {
+    public void envoyVisitsAndReturnsAfterAVisibleRoundTrip() {
         DiplomacySystem diplomacy = new DiplomacySystem();
         int[] resources = new int[ResourceType.COUNT];
 
         assertEquals(DiplomacySystem.ACTION_OK,
                 diplomacy.sendEnvoy(Settlement.RIVERWHISKER));
         diplomacy.advanceTurn(resources, 100);
-        assertEquals(1, diplomacy.getEnvoyTurns(Settlement.RIVERWHISKER));
+        assertEquals(4, diplomacy.getEnvoyTurns(Settlement.RIVERWHISKER));
+        assertEquals(DiplomacySystem.MISSION_OUTBOUND,
+                diplomacy.getEnvoyPhase(Settlement.RIVERWHISKER));
         assertEquals(18, diplomacy.getRelation(Settlement.RIVERWHISKER));
 
         DiplomacySystem.TurnReport report = diplomacy.advanceTurn(resources, 100);
-        assertEquals(0, diplomacy.getEnvoyTurns(Settlement.RIVERWHISKER));
+        assertEquals(3, diplomacy.getEnvoyTurns(Settlement.RIVERWHISKER));
         assertEquals(30, diplomacy.getRelation(Settlement.RIVERWHISKER));
         assertTrue((report.events[Settlement.RIVERWHISKER]
                 & DiplomacySystem.EVENT_ENVOY_ARRIVED) != 0);
+
+        diplomacy.advanceTurn(resources, 100);
+        diplomacy.advanceTurn(resources, 100);
+        report = diplomacy.advanceTurn(resources, 100);
+        assertEquals(0, diplomacy.getEnvoyTurns(Settlement.RIVERWHISKER));
+        assertTrue((report.events[Settlement.RIVERWHISKER]
+                & DiplomacySystem.EVENT_ENVOY_RETURNED) != 0);
     }
 
     @Test

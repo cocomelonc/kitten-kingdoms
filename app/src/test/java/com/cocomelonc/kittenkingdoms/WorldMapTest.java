@@ -62,6 +62,80 @@ public final class WorldMapTest {
     }
 
     @Test
+    public void generatedWalkableNetworkHasNoDeadEndsAcrossSeeds() {
+        int[] rowStep = {-1, 1, 0, 0};
+        int[] colStep = {0, 0, -1, 1};
+        for (long seed = 0; seed < 128; seed++) {
+            WorldMap map = new WorldMap(seed);
+            boolean[][] reached = new boolean[WorldMap.SIZE][WorldMap.SIZE];
+            ArrayDeque<Integer> queue = new ArrayDeque<>();
+            reached[WorldMap.START_ROW][WorldMap.START_COL] = true;
+            queue.add(WorldMap.START_ROW * WorldMap.SIZE + WorldMap.START_COL);
+            int reachedCount = 0;
+            while (!queue.isEmpty()) {
+                int current = queue.removeFirst();
+                int currentRow = current / WorldMap.SIZE;
+                int currentCol = current % WorldMap.SIZE;
+                reachedCount++;
+                for (int direction = 0; direction < rowStep.length; direction++) {
+                    int nextRow = currentRow + rowStep[direction];
+                    int nextCol = currentCol + colStep[direction];
+                    if (!map.isWalkable(nextRow, nextCol) || reached[nextRow][nextCol]) {
+                        continue;
+                    }
+                    reached[nextRow][nextCol] = true;
+                    queue.add(nextRow * WorldMap.SIZE + nextCol);
+                }
+            }
+            int walkableCount = 0;
+            for (int row = 0; row < WorldMap.SIZE; row++) {
+                for (int col = 0; col < WorldMap.SIZE; col++) {
+                    if (!map.isWalkable(row, col)) {
+                        continue;
+                    }
+                    walkableCount++;
+                    int exits = 0;
+                    for (int direction = 0; direction < rowStep.length; direction++) {
+                        if (map.isWalkable(row + rowStep[direction], col + colStep[direction])) {
+                            exits++;
+                        }
+                    }
+                    assertTrue("Dead end for seed " + seed + " at " + row + "," + col,
+                            exits >= 2);
+                }
+            }
+            assertEquals("Disconnected walkable region for seed " + seed,
+                    walkableCount, reachedCount);
+        }
+    }
+
+    @Test
+    public void visibleForestTreesAreNeverWalkable() {
+        WorldMap map = new WorldMap();
+        int blockingTrees = 0;
+        for (int row = 0; row < WorldMap.SIZE; row++) {
+            for (int col = 0; col < WorldMap.SIZE; col++) {
+                if (map.hasBlockingProp(row, col)) {
+                    blockingTrees++;
+                    assertFalse("Tree cell is walkable at " + row + "," + col,
+                            map.isWalkable(row, col));
+                }
+            }
+        }
+        assertTrue("Generated world should contain blocking trees", blockingTrees > 0);
+    }
+
+    @Test
+    public void buildingsCannotCreateADeadEndButOpenMeadowPlacementRemainsValid() {
+        WorldMap map = new WorldMap();
+
+        assertFalse("Blocking the top edge would trap the corner",
+                map.canOccupyWithoutBlockingRoutes(0, 1));
+        assertTrue("A normal opening-meadow building should preserve routes",
+                map.canOccupyWithoutBlockingRoutes(WorldMap.START_ROW, WorldMap.START_COL + 1));
+    }
+
+    @Test
     public void revealAroundOnlyMarksTilesWithinRadius() {
         WorldMap map = new WorldMap();
         int centerRow = 40;
