@@ -9,6 +9,7 @@ package com.cocomelonc.kittenkingdoms;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -19,6 +20,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 public final class KingdomSerializerTest {
+    private static final int LEGACY_SETTLEMENT_COUNT = 4;
+
     @Test
     public void roundTripPreservesAllFields() throws IOException {
         KingdomSaveData original = new KingdomSaveData();
@@ -43,12 +46,14 @@ public final class KingdomSerializerTest {
         original.explored = new boolean[WorldMap.SIZE][WorldMap.SIZE];
         original.explored[48][48] = true;
         original.explored[10][20] = true;
-        original.diplomaticRelations = new int[]{31, 42, 53, 64};
-        original.envoyTurns = new int[]{0, 1, 2, 0};
-        original.courierTurns = new int[]{1, 0, 0, 1};
-        original.tradeRoutes = new boolean[]{true, false, true, false};
-        original.envoyWorkerIds = new int[]{-1, 0, 2, -1};
-        original.courierWorkerIds = new int[]{1, -1, -1, 3};
+        original.diplomaticRelations = new int[]{31, 42, 53, 64, 25, 35, 45, 55};
+        original.envoyTurns = new int[]{0, 1, 2, 0, 0, 0, 1, 0};
+        original.courierTurns = new int[]{1, 0, 0, 1, 0, 2, 0, 0};
+        original.tradeRoutes = new boolean[]{true, false, true, false,
+                false, true, false, true};
+        original.envoyWorkerIds = new int[]{-1, 0, 2, -1, -1, -1, 4, -1};
+        original.courierWorkerIds = new int[]{1, -1, -1, 3, -1, 5, -1, -1};
+        original.totalTrades = 17;
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         KingdomSerializer.write(original, out);
@@ -77,6 +82,7 @@ public final class KingdomSerializerTest {
         assertArrayEquals(original.tradeRoutes, restored.tradeRoutes);
         assertArrayEquals(original.envoyWorkerIds, restored.envoyWorkerIds);
         assertArrayEquals(original.courierWorkerIds, restored.courierWorkerIds);
+        assertEquals(original.totalTrades, restored.totalTrades);
     }
 
     @Test
@@ -141,8 +147,8 @@ public final class KingdomSerializerTest {
         out.writeInt(WorldMap.START_COL);
         out.writeInt(0);
         out.write(new byte[(WorldMap.SIZE * WorldMap.SIZE + 7) / 8]);
-        out.writeInt(Settlement.COUNT);
-        for (int settlement = 0; settlement < Settlement.COUNT; settlement++) {
+        out.writeInt(LEGACY_SETTLEMENT_COUNT);
+        for (int settlement = 0; settlement < LEGACY_SETTLEMENT_COUNT; settlement++) {
             out.writeInt(20 + settlement);
             out.writeInt(0);
             out.writeInt(0);
@@ -184,8 +190,8 @@ public final class KingdomSerializerTest {
         out.writeInt(ResourceType.NONE);
         out.writeInt(0);
         out.write(new byte[(WorldMap.SIZE * WorldMap.SIZE + 7) / 8]);
-        out.writeInt(Settlement.COUNT);
-        for (int settlement = 0; settlement < Settlement.COUNT; settlement++) {
+        out.writeInt(LEGACY_SETTLEMENT_COUNT);
+        for (int settlement = 0; settlement < LEGACY_SETTLEMENT_COUNT; settlement++) {
             out.writeInt(settlement == Settlement.RIVERWHISKER ? 18 : 10);
             out.writeInt(settlement == Settlement.RIVERWHISKER ? 2 : 0);
             out.writeInt(0);
@@ -228,7 +234,7 @@ public final class KingdomSerializerTest {
         out.writeInt(TechNode.NONE);
         out.writeInt(0);
         for (int resource = 0; resource < ResourceType.COUNT; resource++) {
-            out.writeInt(resource == ResourceType.CATNIP ? 80 : 0);
+            out.writeInt(resource == ResourceType.CATNIP ? 100 : 0);
         }
         out.writeInt(2);
         writeVersionFiveBuilding(out, 0, BuildingType.TOWN_HALL,
@@ -236,8 +242,8 @@ public final class KingdomSerializerTest {
         writeVersionFiveBuilding(out, 1, BuildingType.CATNIP_FARM,
                 WorldMap.START_ROW, WorldMap.START_COL + 1);
         out.write(new byte[(WorldMap.SIZE * WorldMap.SIZE + 7) / 8]);
-        out.writeInt(Settlement.COUNT);
-        for (int settlement = 0; settlement < Settlement.COUNT; settlement++) {
+        out.writeInt(LEGACY_SETTLEMENT_COUNT);
+        for (int settlement = 0; settlement < LEGACY_SETTLEMENT_COUNT; settlement++) {
             out.writeInt(10);
             out.writeInt(0);
             out.writeInt(0);
@@ -250,7 +256,7 @@ public final class KingdomSerializerTest {
         out.writeInt(BuildingType.NONE);
         out.writeInt(ResourceType.CATNIP);
         out.writeInt(4);
-        for (int settlement = 0; settlement < Settlement.COUNT; settlement++) {
+        for (int settlement = 0; settlement < LEGACY_SETTLEMENT_COUNT; settlement++) {
             out.writeInt(BuildingType.NONE);
             out.writeInt(BuildingType.NONE);
         }
@@ -268,6 +274,58 @@ public final class KingdomSerializerTest {
         assertEquals(1, world.getIdleWorkerCount());
         assertEquals(KingdomWorld.WORKFORCE_OK, world.assignWorker(farm.id));
         assertEquals(7, world.getAssignedWorker(farm.id).id);
+    }
+
+    @Test
+    public void versionSixSaveKeepsFourOldKingdomsAndAddsFourNewDefaults() throws IOException {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        DataOutputStream out = new DataOutputStream(bytes);
+        out.writeInt(6);
+        out.writeInt(20);
+        out.writeInt(WorldMap.START_ROW);
+        out.writeInt(WorldMap.START_COL);
+        out.writeInt(2);
+        out.writeInt(0);
+        out.writeInt(TechNode.NONE);
+        out.writeInt(0);
+        for (int resource = 0; resource < ResourceType.COUNT; resource++) {
+            out.writeInt(0);
+        }
+        out.writeInt(1);
+        writeVersionFiveBuilding(out, 0, BuildingType.TOWN_HALL,
+                WorldMap.START_ROW, WorldMap.START_COL);
+        out.write(new byte[(WorldMap.SIZE * WorldMap.SIZE + 7) / 8]);
+        out.writeInt(LEGACY_SETTLEMENT_COUNT);
+        for (int settlement = 0; settlement < LEGACY_SETTLEMENT_COUNT; settlement++) {
+            out.writeInt(40 + settlement);
+            out.writeInt(0);
+            out.writeInt(0);
+            out.writeBoolean(settlement == Settlement.RIVERWHISKER);
+        }
+        out.writeInt(1);
+        out.writeInt(3);
+        out.writeInt(WorldMap.START_ROW - 1);
+        out.writeInt(WorldMap.START_COL);
+        out.writeInt(BuildingType.NONE);
+        out.writeInt(ResourceType.NONE);
+        out.writeInt(0);
+        out.writeInt(BuildingType.NONE);
+        out.writeInt(0);
+        for (int settlement = 0; settlement < LEGACY_SETTLEMENT_COUNT; settlement++) {
+            out.writeInt(BuildingType.NONE);
+            out.writeInt(BuildingType.NONE);
+        }
+
+        KingdomSaveData migrated = KingdomSerializer.read(
+                new ByteArrayInputStream(bytes.toByteArray()));
+        KingdomWorld world = new KingdomWorld(null);
+        world.continueKingdom(migrated);
+
+        assertEquals(40, world.getRelation(Settlement.RIVERWHISKER));
+        assertEquals(16, world.getRelation(Settlement.PEBBLEBROOK));
+        assertTrue(world.hasTradeRoute(Settlement.RIVERWHISKER));
+        assertEquals(0, world.getTotalTrades());
+        assertEquals(1, world.getIdleWorkerCount());
     }
 
     private static void writeVersionFiveBuilding(DataOutputStream out, int id, int type,

@@ -96,6 +96,7 @@ final class KingdomWorld {
     private int facingDirection = DIRECTION_DOWN;
     private int nextBuildingId;
     private int nextWorkerId;
+    private int totalTrades;
 
     KingdomWorld(Listener listener) {
         this.listener = listener;
@@ -157,6 +158,7 @@ final class KingdomWorld {
         Arrays.fill(courierWorkerIds, BuildingType.NONE);
         nextBuildingId = 0;
         nextWorkerId = 0;
+        totalTrades = 0;
         buildings.add(new PlacedBuilding(nextBuildingId++, BuildingType.TOWN_HALL, row, col, 0));
         map.markOccupied(row, col);
         map.revealAround(row, col);
@@ -792,7 +794,6 @@ final class KingdomWorld {
         turn++;
 
         int[] delta = new int[ResourceType.COUNT];
-        int cap = TurnMath.computeStorageCap(buildings, buildingTypes);
         prepareProductionBatches(delta);
 
         int foodUpkeep = TurnMath.computeFoodUpkeep(population);
@@ -824,10 +825,7 @@ final class KingdomWorld {
             }
         }
 
-        DiplomacySystem.TurnReport diplomacyReport = diplomacy.advanceTurn(resources, cap);
-        for (int resource = 0; resource < ResourceType.COUNT; resource++) {
-            delta[resource] += diplomacyReport.resourceDelta[resource];
-        }
+        DiplomacySystem.TurnReport diplomacyReport = diplomacy.advanceTurn();
         for (int settlement = 0; settlement < Settlement.COUNT; settlement++) {
             if ((diplomacyReport.events[settlement]
                     & DiplomacySystem.EVENT_ENVOY_RETURNED) != 0) {
@@ -908,6 +906,7 @@ final class KingdomWorld {
         data.tradeRoutes = diplomacy.tradeRoutesSnapshot();
         data.envoyWorkerIds = envoyWorkerIds.clone();
         data.courierWorkerIds = courierWorkerIds.clone();
+        data.totalTrades = totalTrades;
         return data;
     }
 
@@ -945,6 +944,7 @@ final class KingdomWorld {
         }
         population = Math.max(0, data.population);
         techPointPool = Math.max(0, data.techPointPool);
+        totalTrades = Math.max(0, data.totalTrades);
         activeTechId = (data.activeTechId >= 0 && data.activeTechId < TechNode.COUNT)
                 ? data.activeTechId : TechNode.NONE;
         for (int i = 0; i < TechNode.COUNT && i < data.techUnlocked.length; i++) {
@@ -1288,6 +1288,29 @@ final class KingdomWorld {
         return resources.clone();
     }
 
+    int getQueuedResourceAmount(int resourceId) {
+        int queued = 0;
+        for (PlacedBuilding building : buildings) {
+            if (building.pendingResourceId == resourceId) {
+                queued += building.pendingAmount;
+            }
+        }
+        for (WorkerKitten worker : workers) {
+            if (worker.carriedResourceId == resourceId) {
+                queued += worker.carriedAmount;
+            }
+        }
+        return queued;
+    }
+
+    int getTotalQueuedGoods() {
+        int total = 0;
+        for (int resource = 0; resource < ResourceType.COUNT; resource++) {
+            total += getQueuedResourceAmount(resource);
+        }
+        return total;
+    }
+
     int countCompletedBuildings(int typeId) {
         int count = 0;
         for (PlacedBuilding building : buildings) {
@@ -1296,6 +1319,52 @@ final class KingdomWorld {
             }
         }
         return count;
+    }
+
+    int countPlacedBuildings(int typeId) {
+        int count = 0;
+        for (PlacedBuilding building : buildings) {
+            if (building.typeId == typeId) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    int getCompletedBuildingCount() {
+        int count = 0;
+        for (PlacedBuilding building : buildings) {
+            if (building.isComplete()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    int getConstructionSiteCount() {
+        return buildings.size() - getCompletedBuildingCount();
+    }
+
+    int getUnlockedTechCount() {
+        int count = 0;
+        for (boolean unlocked : techUnlocked) {
+            if (unlocked) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    int getExploredPercent() {
+        int explored = 0;
+        for (int exploredRow = 0; exploredRow < WorldMap.SIZE; exploredRow++) {
+            for (int exploredCol = 0; exploredCol < WorldMap.SIZE; exploredCol++) {
+                if (map.isExplored(exploredRow, exploredCol)) {
+                    explored++;
+                }
+            }
+        }
+        return Math.round(explored * 100f / (WorldMap.SIZE * WorldMap.SIZE));
     }
 
     int[] getBuildingCountSnapshot() {
@@ -1395,6 +1464,36 @@ final class KingdomWorld {
 
     boolean hasTradeRoute(int settlementId) {
         return diplomacy.hasTradeRoute(settlementId);
+    }
+
+    int getTradeRouteCount() {
+        return diplomacy.getTradeRouteCount();
+    }
+
+    int getAlliedKingdomCount() {
+        int count = 0;
+        for (int settlement = 0; settlement < Settlement.COUNT; settlement++) {
+            if (diplomacy.getRelation(settlement) >= 70) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    int getTotalTrades() {
+        return totalTrades;
+    }
+
+    int checkTrade(int settlementId, int offerIndex) {
+        return diplomacy.checkTrade(settlementId, offerIndex, resources, getResourceCap());
+    }
+
+    int tradeWithSettlement(int settlementId, int offerIndex) {
+        int result = diplomacy.trade(settlementId, offerIndex, resources, getResourceCap());
+        if (result == DiplomacySystem.ACTION_OK) {
+            totalTrades++;
+        }
+        return result;
     }
 
     int sendEnvoy(int settlementId) {

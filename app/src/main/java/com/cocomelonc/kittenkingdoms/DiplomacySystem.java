@@ -17,10 +17,11 @@ final class DiplomacySystem {
     static final int ACTION_NEEDS_RESOURCES = 4;
     static final int ACTION_ROUTE_EXISTS = 5;
     static final int ACTION_NEEDS_WORKER = 6;
+    static final int ACTION_STORAGE_FULL = 7;
+    static final int ACTION_ROUTE_REQUIRED = 8;
 
     static final int EVENT_ENVOY_ARRIVED = 1;
     static final int EVENT_COURIER_ARRIVED = 1 << 1;
-    static final int EVENT_TRADE_COMPLETED = 1 << 2;
     static final int EVENT_ENVOY_RETURNED = 1 << 3;
     static final int EVENT_COURIER_RETURNED = 1 << 4;
 
@@ -33,15 +34,12 @@ final class DiplomacySystem {
     static final int TRADE_RELATION_REQUIRED = 35;
     static final int TRADE_WOOD_COST = 8;
     static final int TRADE_STONE_COST = 5;
-    static final int TRADE_EXPORT_AMOUNT = 2;
-    static final int TRADE_IMPORT_AMOUNT = 3;
-
     private static final int ENVOY_TOTAL_TURNS = 5;
     private static final int ENVOY_ARRIVAL_REMAINING = 3;
     private static final int COURIER_TOTAL_TURNS = 3;
     private static final int COURIER_ARRIVAL_REMAINING = 2;
     private static final int COURIER_RELATION_REQUIRED = 15;
-    private static final int[] STARTING_RELATIONS = {18, 12, 22, 8};
+    private static final int[] STARTING_RELATIONS = {18, 12, 22, 8, 16, 10, 20, 14};
 
     private final Settlement[] settlements = Settlement.createAll();
     private final int[] relations = new int[Settlement.COUNT];
@@ -118,7 +116,40 @@ final class DiplomacySystem {
         return ACTION_OK;
     }
 
-    TurnReport advanceTurn(int[] resources, int resourceCap) {
+    int checkTrade(int settlementId, int offerIndex, int[] resources, int resourceCap) {
+        if (!isValid(settlementId)) {
+            return ACTION_INVALID;
+        }
+        if (!tradeRoutes[settlementId]) {
+            return ACTION_ROUTE_REQUIRED;
+        }
+        MarketOffer[] offers = settlements[settlementId].marketOffers;
+        if (offerIndex < 0 || offerIndex >= offers.length) {
+            return ACTION_INVALID;
+        }
+        MarketOffer offer = offers[offerIndex];
+        if (resources[offer.giveResourceId] < offer.giveAmount) {
+            return ACTION_NEEDS_RESOURCES;
+        }
+        if (resources[offer.receiveResourceId] > resourceCap - offer.receiveAmount) {
+            return ACTION_STORAGE_FULL;
+        }
+        return ACTION_OK;
+    }
+
+    int trade(int settlementId, int offerIndex, int[] resources, int resourceCap) {
+        int result = checkTrade(settlementId, offerIndex, resources, resourceCap);
+        if (result != ACTION_OK) {
+            return result;
+        }
+        MarketOffer offer = settlements[settlementId].marketOffers[offerIndex];
+        resources[offer.giveResourceId] -= offer.giveAmount;
+        resources[offer.receiveResourceId] += offer.receiveAmount;
+        relations[settlementId] = clampRelation(relations[settlementId] + 1);
+        return ACTION_OK;
+    }
+
+    TurnReport advanceTurn() {
         TurnReport report = new TurnReport();
         for (Settlement settlement : settlements) {
             int id = settlement.id;
@@ -140,21 +171,6 @@ final class DiplomacySystem {
                     report.events[id] |= EVENT_COURIER_RETURNED;
                 }
             }
-            if (!tradeRoutes[id]) {
-                continue;
-            }
-            int exported = settlement.requestedResource;
-            int imported = settlement.offeredResource;
-            if (resources[exported] < TRADE_EXPORT_AMOUNT || resources[imported] >= resourceCap) {
-                continue;
-            }
-            int received = Math.min(TRADE_IMPORT_AMOUNT, resourceCap - resources[imported]);
-            resources[exported] -= TRADE_EXPORT_AMOUNT;
-            resources[imported] += received;
-            report.resourceDelta[exported] -= TRADE_EXPORT_AMOUNT;
-            report.resourceDelta[imported] += received;
-            report.events[id] |= EVENT_TRADE_COMPLETED;
-            relations[id] = clampRelation(relations[id] + 1);
         }
         return report;
     }
@@ -195,6 +211,16 @@ final class DiplomacySystem {
 
     boolean hasTradeRoute(int settlementId) {
         return tradeRoutes[settlementId];
+    }
+
+    int getTradeRouteCount() {
+        int count = 0;
+        for (boolean route : tradeRoutes) {
+            if (route) {
+                count++;
+            }
+        }
+        return count;
     }
 
     int[] relationsSnapshot() {
@@ -285,6 +311,5 @@ final class DiplomacySystem {
 
     static final class TurnReport {
         final int[] events = new int[Settlement.COUNT];
-        final int[] resourceDelta = new int[ResourceType.COUNT];
     }
 }

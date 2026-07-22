@@ -19,7 +19,8 @@ import java.util.ArrayList;
  * so the caller can fall back to a fresh kingdom rather than crash.
  */
 final class KingdomSerializer {
-    private static final int SAVE_VERSION = 6;
+    private static final int SAVE_VERSION = 7;
+    private static final int LOGISTICS_SAVE_VERSION = 6;
     private static final int DIPLOMATIC_WORKER_SAVE_VERSION = 5;
     private static final int WORKER_SAVE_VERSION = 4;
     private static final int DIPLOMACY_SAVE_VERSION = 3;
@@ -52,13 +53,15 @@ final class KingdomSerializer {
         writeDiplomacy(out, data);
         writeWorkers(out, data);
         writeDiplomaticWorkers(out, data);
+        out.writeInt(Math.max(0, data.totalTrades));
         out.flush();
     }
 
     static KingdomSaveData read(InputStream rawIn) throws IOException {
         DataInputStream in = new DataInputStream(rawIn);
         int version = in.readInt();
-        if (version != SAVE_VERSION && version != DIPLOMATIC_WORKER_SAVE_VERSION
+        if (version != SAVE_VERSION && version != LOGISTICS_SAVE_VERSION
+                && version != DIPLOMATIC_WORKER_SAVE_VERSION
                 && version != WORKER_SAVE_VERSION
                 && version != DIPLOMACY_SAVE_VERSION && version != LEGACY_SAVE_VERSION) {
             throw new IOException("Unsupported save version: " + version);
@@ -94,8 +97,9 @@ final class KingdomSerializer {
             }
         }
         data.explored = readExploredBits(in);
-        if (version >= 3) {
-            readDiplomacy(in, data);
+        int savedSettlementCount = 0;
+        if (version >= DIPLOMACY_SAVE_VERSION) {
+            savedSettlementCount = readDiplomacy(in, data);
             if (version < DIPLOMATIC_WORKER_SAVE_VERSION) {
                 migrateLegacyDiplomaticTrips(data);
             }
@@ -104,14 +108,18 @@ final class KingdomSerializer {
             readWorkers(in, data, version);
         }
         if (version >= DIPLOMATIC_WORKER_SAVE_VERSION) {
-            readDiplomaticWorkers(in, data);
+            readDiplomaticWorkers(in, data, savedSettlementCount);
+        }
+        if (version >= SAVE_VERSION) {
+            data.totalTrades = Math.max(0, in.readInt());
         }
         return data;
     }
 
     /** Old saves tracked one-way arrival only; preserve that ETA and append the new return leg. */
     private static void migrateLegacyDiplomaticTrips(KingdomSaveData data) {
-        for (int settlement = 0; settlement < Settlement.COUNT; settlement++) {
+        int count = Math.min(data.envoyTurns.length, data.courierTurns.length);
+        for (int settlement = 0; settlement < count; settlement++) {
             if (data.envoyTurns[settlement] > 0) {
                 data.envoyTurns[settlement] += 3;
             }
@@ -129,11 +137,12 @@ final class KingdomSerializer {
         }
     }
 
-    private static void readDiplomaticWorkers(DataInputStream in, KingdomSaveData data)
+    private static void readDiplomaticWorkers(DataInputStream in, KingdomSaveData data,
+            int settlementCount)
             throws IOException {
-        data.envoyWorkerIds = new int[Settlement.COUNT];
-        data.courierWorkerIds = new int[Settlement.COUNT];
-        for (int settlement = 0; settlement < Settlement.COUNT; settlement++) {
+        data.envoyWorkerIds = new int[settlementCount];
+        data.courierWorkerIds = new int[settlementCount];
+        for (int settlement = 0; settlement < settlementCount; settlement++) {
             data.envoyWorkerIds[settlement] = in.readInt();
             data.courierWorkerIds[settlement] = in.readInt();
         }
@@ -161,7 +170,7 @@ final class KingdomSerializer {
             throw new IOException("Implausible worker count: " + count);
         }
         data.workers = new ArrayList<>(count);
-        int fields = version >= SAVE_VERSION ? 8 : 6;
+        int fields = version >= LOGISTICS_SAVE_VERSION ? 8 : 6;
         for (int i = 0; i < count; i++) {
             int[] worker = new int[fields];
             for (int field = 0; field < fields; field++) {
@@ -190,9 +199,9 @@ final class KingdomSerializer {
         }
     }
 
-    private static void readDiplomacy(DataInputStream in, KingdomSaveData data) throws IOException {
+    private static int readDiplomacy(DataInputStream in, KingdomSaveData data) throws IOException {
         int count = in.readInt();
-        if (count != Settlement.COUNT) {
+        if (count <= 0 || count > Settlement.COUNT) {
             throw new IOException("Unsupported settlement count: " + count);
         }
         data.diplomaticRelations = new int[count];
@@ -205,6 +214,7 @@ final class KingdomSerializer {
             data.courierTurns[id] = in.readInt();
             data.tradeRoutes[id] = in.readBoolean();
         }
+        return count;
     }
 
     private static int valueAt(int[] values, int index) {

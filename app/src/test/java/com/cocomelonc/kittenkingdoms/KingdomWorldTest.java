@@ -25,6 +25,41 @@ public final class KingdomWorldTest {
         assertEquals(1, world.getBuildings().size());
         assertEquals(2, world.getWorkerCount());
         assertEquals(BuildingType.TOWN_HALL, world.getBuildings().get(0).typeId);
+        assertEquals(100, world.getResourceCap());
+    }
+
+    @Test
+    public void completedHousingAlsoAddsGentleStorageCapacity() {
+        KingdomWorld world = new KingdomWorld(null);
+        world.beginNewKingdom();
+        int startingCap = world.getResourceCap();
+
+        world.placeBuildingForTest(BuildingType.KITTEN_COTTAGE,
+                WorldMap.START_ROW, WorldMap.START_COL + 1, 0);
+
+        assertEquals(startingCap + 4 * TurnMath.STORAGE_PER_HOUSING_SPACE,
+                world.getResourceCap());
+    }
+
+    @Test
+    public void successfulMarketTradeUpdatesResourcesAndStatistics() {
+        KingdomWorld original = new KingdomWorld(null);
+        original.beginNewKingdom();
+        KingdomSaveData save = original.snapshot();
+        save.tradeRoutes[Settlement.RIVERWHISKER] = true;
+        save.resources[ResourceType.WOOD] = 30;
+        save.resources[ResourceType.CRYSTALS] = 0;
+        KingdomWorld world = new KingdomWorld(null);
+        world.continueKingdom(save);
+        MarketOffer offer = world.getSettlements()[Settlement.RIVERWHISKER].marketOffers[0];
+
+        assertEquals(DiplomacySystem.ACTION_OK,
+                world.tradeWithSettlement(Settlement.RIVERWHISKER, 0));
+
+        assertEquals(30 - offer.giveAmount, world.getResource(ResourceType.WOOD));
+        assertEquals(offer.receiveAmount, world.getResource(ResourceType.CRYSTALS));
+        assertEquals(1, world.getTradeRouteCount());
+        assertEquals(1, world.getTotalTrades());
     }
 
     @Test

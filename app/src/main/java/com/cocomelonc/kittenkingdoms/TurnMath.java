@@ -15,6 +15,7 @@ import java.util.List;
 final class TurnMath {
     static final int BASE_POPULATION_GROWTH_THRESHOLD = 5;
     static final int MIN_POPULATION_GROWTH_THRESHOLD = 1;
+    static final int STORAGE_PER_HOUSING_SPACE = 5;
 
     private TurnMath() {
     }
@@ -49,7 +50,8 @@ final class TurnMath {
         int cap = 0;
         for (PlacedBuilding building : buildings) {
             if (building.isComplete()) {
-                cap += types[building.typeId].storageCapBonus;
+                BuildingType type = types[building.typeId];
+                cap += type.storageCapBonus + type.housing * STORAGE_PER_HOUSING_SPACE;
             }
         }
         return cap;

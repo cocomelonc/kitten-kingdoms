@@ -10,7 +10,7 @@ settlement one gentle turn at a time. Walk a little kitten across a
 continuous 96x96-tile world, uncover the land as you go, and build a small
 kingdom on the ground you've discovered: gather six resources, choose among
 32 kinds of buildings, research 24 technologies, and build peaceful
-relationships with four neighbouring settlements. Visible worker kittens walk
+relationships with eight neighbouring settlements. Visible worker kittens walk
 to construction sites, collect finished goods, and carry every batch back to
 the Town Hall or a Storage Barn. There are no ads,
 accounts, purchases, trackers, network calls, timers, lives, or game-over
@@ -22,9 +22,9 @@ consistent on every Android device.
 
 ### Screenshots
 
-The screenshots below were captured from the Android build on Android
-16/API 36 after the unified terrain, animated animals, diplomacy, complete
-fog-of-war surveying, and new building-icon work.
+The screenshots below were captured from version 1.4.0 running on Android
+16/API 36. They show the unified terrain, animated animals, eight-kingdom
+diplomacy, manual markets, visible storage limits, and kingdom statistics.
 
 | English | Русский |
 |---|---|
@@ -36,13 +36,27 @@ placed on any discovered tile once you can afford them.
 
 ![World view with unified terrain, the kitten, wildlife, and fog of war](art/runtime-level.png)
 
-The regional World Map is a real second play layer: four settlements keep
+The regional World Map is a real second play layer: eight settlements keep
 their own relationship score. An envoy or courier is a real free worker who
 leaves the local map, appears on the regional route as *en route*, *visiting*,
-and *returning*, then rejoins the workforce at the Town Hall. Unlocked trade
-routes continue exchanging resources with the home kingdom.
+and *returning*, then rejoins the workforce at the Town Hall. Every unlocked
+trade route opens a distinct four-offer market; exchanges happen only when the
+player chooses them, never automatically.
 
 ![World map with neighbouring settlements and diplomacy actions](art/runtime-world-map.png)
+
+Every kingdom offers its own clear two-way market after its route opens. Sell
+surplus stock to free storage space, or spend Crystals on the resources that
+kingdom produces. The cards always show the exact exchange, current stock, and
+free destination capacity before anything is committed.
+
+![Riverwhisker market with two sell and two buy offers](art/runtime-market-1.4.0.png)
+
+The four-page Statistics screen keeps the economy readable without crowding
+the main HUD: it summarizes storage, queued deliveries, kittens, progress,
+diplomatic relationships, trades, and counts for all 32 building types.
+
+![Kingdom statistics overview](art/runtime-statistics-1.4.0.png)
 
 Build is an eight-page catalogue of four large illustrated cards per page:    
 
@@ -95,7 +109,9 @@ workers keep their jobs until you release them.
 *End Turn* prepares a batch at each staffed production building. A resource
 icon appears above it; the assigned kitten collects the batch, carries it
 across the map, and deposits it at the closest Town Hall or Storage Barn. Only
-delivered goods appear in the top bar and can be spent.
+delivered goods appear in the top bar and can be spent. Every resource now
+shows `stored/capacity`, a fill bar, and a clear `FULL` warning. Goods wait
+safely at their workshop when that resource section is full.
 
 #### Page 5 - Fish, Catnip, then growth
 
@@ -121,11 +137,14 @@ Releasing a worker never removes the building or its waiting goods.
 #### Page 8 - Grow one step at a time
 
 After hiring a third worker, add a Lumber Camp. Build a Kitten Cottage only
-when the Town Hall's housing limit is close, then add a Storage Barn. Swipe
+when the Town Hall's housing limit is close: every housing place also adds five
+storage spaces. Add a Storage Barn for a larger dedicated increase. Swipe
 through Build and Research: later cards clearly show their turn, population,
 stockpile, building-count, and prerequisite-technology conditions. The World
-Map opens peaceful diplomacy, but every traveller temporarily uses one free
-worker. There is no defeat timer, so assignments can always be rebalanced.
+Map opens peaceful diplomacy and eight different markets, but every traveller
+temporarily uses one free worker. The four-page Statistics screen explains
+storage, queued goods, workers, exploration, technologies, every building
+type, and trade relationships.
 
 Recommended opening:
 
@@ -155,7 +174,9 @@ Explore → Fishing Dock + Catnip Farm → Deliver goods → Grow to 3 kittens
   immediately. A resource bubble appears above the building; its assigned
   kitten collects the batch, walks to the closest completed Town Hall or
   storage building, and only then deposits it. Ready queues hold up to three
-  batches, and a workshop without a worker stays idle.
+  batches, and a workshop without a worker stays idle. A full resource section
+  leaves its goods in the building queue; spend or sell stock, add housing, or
+  build a storage building to make room.
 - **Manage workers**: tap any building for its status card. Assign or release
   a kitten at a workshop, and use the Town Hall to hire another resident for
   5 Fish and 2 Catnip. Workers keep their assignment, finish deliveries, and
@@ -170,11 +191,18 @@ Explore → Fishing Dock + Catnip Farm → Deliver goods → Grow to 3 kittens
   completed building. These requirements unlock the card but are not consumed.
   Pick a target and, once enough points have banked, it unlocks; leftover
   points carry to the next choice.
-- **Meet neighbours**: open *World Map* to visit four distinct settlements.
+- **Meet neighbours**: open *World Map* to visit eight distinct settlements.
   Sending an envoy or courier requires an idle kitten. That exact numbered
   worker disappears from the home map, walks the regional route through three
   visible mission states, and returns after the round trip. Strong
-  relationships unlock permanent trade routes.
+  relationships unlock permanent trade routes. A route opens that kingdom's
+  market with two offers to sell surplus for Crystals and two offers to buy
+  useful goods with Crystals. Prices and available resources differ by
+  kingdom, and no exchange happens without tapping it.
+- **Read the kingdom**: open *Statistics* for four swipeable pages covering
+  per-resource storage and queues, workforce, exploration, research, completed
+  buildings and construction sites, counts for all 32 building types, trade
+  routes, allies, and completed exchanges.
 - **Notice**: persistent icons identify ready goods, missing workers, and
   construction sites waiting for a builder. Small banners announce completed
   buildings, deliveries, hiring, and research.
@@ -190,17 +218,17 @@ economy, just so the kingdom doesn't feel empty.
 
 - One focused scope: a home settlement, one continuous local map, a compact
   regional diplomacy map, six resources, 32 buildings, 24 technologies,
-  and four peaceful neighbours. There is deliberately no combat or army - a
+  and eight peaceful neighbours. There is deliberately no combat or army - a
   kingdom can only grow, never fail.
 - No engine: a single hardware-accelerated Android `View` renders the world,
   camera, HUD, and every modal screen; only visible tiles are drawn each
   frame.
 - Zero runtime dependencies, matching the rest of the series: the kingdom
   save is a small hand-written versioned binary format over plain
-  `java.io` streams, not a database library. The current version 6 stores
+  `java.io` streams, not a database library. The current version 7 stores
   building queues, stable IDs, worker assignments, carried cargo, and the
   exact workers reserved by diplomatic missions; kingdoms from versions 2
-  through 5 migrate automatically.
+  through 6 migrate automatically.
 - Terrain regenerates deterministically from a fixed seed and is never saved;
   only what the player has actually discovered or built is persisted.
 - English and Russian resources bundled in every APK/AAB.
@@ -306,11 +334,14 @@ format through byte streams.
   you assign or release a kitten; the Town Hall lets you hire residents.
 - Tap *Research*, swipe through six pages, then tap an available card to set
   it as the active target; Back returns to the kingdom.
-- Tap *World Map* to select a neighbouring settlement, send an envoy or
-  courier, offer a gift, and establish a trade route once the relationship is
-  warm enough. End turns to advance travellers and route exchanges.
+- Tap *World Map* to select one of eight neighbouring settlements, send an
+  envoy or courier, offer a gift, and establish a trade route once the
+  relationship is warm enough. Open its market to choose exactly what to buy
+  or sell; routes never exchange resources automatically.
+- Tap *Statistics* and swipe through Overview, Storage, and two building-count
+  pages.
 - Tap *End Turn* to prepare staffed production batches and resolve upkeep,
-  population growth, research, diplomacy, and trade. Let workers deliver the
+  population growth, research, and diplomacy. Let workers deliver the
   batches to storage before spending them.
 - Top-right pause button or Android Back: pause (or cancel a build selection
   first, if one is open). Pause also offers a *Main Menu* button.
@@ -321,7 +352,7 @@ format through byte streams.
 ```text
 app/src/main/java/com/cocomelonc/kittenkingdoms/
   MainActivity.java       edge-to-edge Android host, lifecycle, and activity-result glue
-  KittenKingdomsView.java camera, tile culling, HUD, Build and World Map overlays, input
+  KittenKingdomsView.java camera, HUD, Build, World Map, Market, Statistics, input
   TechTreeActivity.java   hosts the Research screen, returns the chosen tech via Intent
   TechTreeView.java       24 illustrated research cards, four per swipeable page
   HelpActivity.java       hosts the swipeable "How to Play" comic
@@ -336,8 +367,9 @@ app/src/main/java/com/cocomelonc/kittenkingdoms/
   TechNode.java           data-driven technology tree (a DAG, not a line)
   PlacedBuilding.java     stable building ID, construction, and ready-goods queue
   WildlifeCritter.java    decorative background creature: no AI, just wanders
-  Settlement.java         the four neighbouring settlement definitions
-  DiplomacySystem.java    relationship, travel, gifts, and trade-route rules
+  Settlement.java         eight neighbouring kingdoms and their market catalogues
+  MarketOffer.java        one exact buy/sell exchange without hidden randomness
+  DiplomacySystem.java    relationship, travel, route, and manual-market rules
   TerrainSprites.java     slices/caches the Kenney world and original building sheets
   KittenSprites.java      four-direction, four-frame kitten animation loader
   WildlifeSprites.java    two-frame wildlife animation loader
@@ -382,10 +414,14 @@ Contributions and translations are welcome. See [CONTRIBUTING.md](CONTRIBUTING.m
 Kitten Kingdoms - маленькая спокойная Android-игра о том, как растить
 кошачье поселение ход за ходом. Котёнок гуляет по цельной карте 96x96 клеток,
 открывая землю по пути, а на открытых клетках можно строить: добывать шесть
-видов ресурсов, возводить одиннадцать типов зданий и исследовать дерево из
-десяти технологий. На отдельной карте мира живут четыре соседних поселения:
-к ним можно отправлять послов и гонцов, дарить подарки и открывать постоянные
-торговые пути. Здесь нет рекламы, регистрации, покупок, аналитики, сети,
+видов ресурсов, возводить 32 типа зданий и исследовать 24 технологии. На
+отдельной карте мира живут восемь соседних королевств: к ним можно отправлять
+послов и гонцов, дарить подарки и открывать торговые пути. Каждый путь открывает
+свой рынок с двумя вариантами продажи излишков за кристаллы и двумя вариантами
+покупки ресурсов. Обмен происходит только по выбору игрока. Верхняя панель
+показывает запас и лимит каждого ресурса; жильё тоже увеличивает вместимость,
+а четыре страницы статистики показывают очереди, работников, технологии,
+здания и торговые отношения. Здесь нет рекламы, регистрации, покупок, аналитики, сети,
 таймеров, жизней и экрана проигрыша - королевство может только расти. По
 открытой земле бродят кролики, ежи, утята и пчёлы - чисто декоративные, без
 логики и влияния на экономику. Рабочие котята сами идут на стройплощадки,
