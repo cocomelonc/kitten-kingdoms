@@ -57,7 +57,76 @@ The pause card uses the same EN/RU switch as every other screen:
 
 ![Russian pause card](art/runtime-pause-ru.png)
 
-### How a kingdom grows
+### How to Play
+
+The main-menu *How to Play* button opens the same eight chapters below as a
+swipeable in-game comic. Swipe horizontally or use *Back* and *Next*; Android
+Back returns to the title screen.
+
+#### Page 1 - Meet your little kingdom
+
+Drag to look around, pinch to zoom, and tap discovered ground to move the
+royal kitten. Walking reveals fog permanently. Surveying every reachable shore
+also uncovers the inaccessible middle of lakes and rocky areas. Explore first:
+buildings can only be placed on discovered, reachable ground.
+
+#### Page 2 - A balanced first pair
+
+Build **one Fishing Dock and one Catnip Farm**. The two starting workers can
+construct and operate them in parallel. Fish supports population growth; Fish
+plus Catnip pays for the next worker. A second Dock can wait.
+
+#### Page 3 - Construction needs paws
+
+Placing a building creates a construction site rather than a completed
+building. The closest free kitten walks beside it and performs each stage. An
+exclamation mark means the site is safely waiting for a builder. Production
+workers keep their jobs until you release them.
+
+#### Page 4 - Goods must reach storage
+
+*End Turn* prepares a batch at each staffed production building. A resource
+icon appears above it; the assigned kitten collects the batch, carries it
+across the map, and deposits it at the closest Town Hall or Storage Barn. Only
+delivered goods appear in the top bar and can be spent.
+
+#### Page 5 - Fish, Catnip, then growth
+
+The Town Hall already houses four kittens, so an early Kitten Cottage is not
+needed. Keep one Dock and one Farm staffed, wait for their deliveries, and end
+turns. Fish pays the gentle food upkeep and eventually grows the population
+from two residents to three.
+
+#### Page 6 - Hire at the Town Hall
+
+Tap the Town Hall and choose *Hire Kitten*. Hiring costs **5 Fish + 2 Catnip**
+and requires the population to be larger than the current worker count. The
+new worker immediately takes the oldest waiting construction job. A grey
+button means resources or a free resident are still missing.
+
+#### Page 7 - No free builder is not a dead end
+
+If both starting kittens work at two Fishing Docks, tap either Dock and choose
+*Release Kitten*. That kitten leaves the Dock and automatically builds the
+oldest waiting site. Build a Catnip Farm while the other Dock keeps fishing.
+Releasing a worker never removes the building or its waiting goods.
+
+#### Page 8 - Grow one step at a time
+
+After hiring a third worker, add a Lumber Camp. Build a Kitten Cottage only
+when the Town Hall's housing limit is close, then add a Storage Barn. Research
+unlocks weaving, scholars, plazas, crystals, and stronger yields; the World
+Map opens peaceful diplomacy. There is no defeat timer, so assignments can
+always be paused and rebalanced.
+
+Recommended opening:
+
+```text
+Explore → Fishing Dock + Catnip Farm → Deliver goods → Grow to 3 kittens
+        → Hire at Town Hall → Lumber Camp → Cottage → Storage → Research
+```
+
+### Rules reference
 
 - **Explore**: drag to pan the map, pinch to zoom, tap a tile to walk the
   kitten there. Fog of war reveals permanently in a radius around every tile
