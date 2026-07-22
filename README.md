@@ -54,8 +54,8 @@ icons, and EN/RU text. It explains the recommended opening, construction,
 delivery, population growth, hiring, recovery when every worker is occupied,
 and the later expansion path:
 
-![Build menu with buildable, locked, and unaffordable buildings](art/runtime-build-menu.png)
-![Research screen with illustrated technology cards](art/runtime-tech-tree.png)
+![Build catalogue with four large building cards per page](art/runtime-build-cards-1.3.0.png)
+![Technology catalogue with illustrated cards and progression requirements](art/runtime-technology-cards-1.3.0.png)
 
 The pause card uses the same EN/RU switch as every other screen:
 
