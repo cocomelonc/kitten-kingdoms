@@ -80,7 +80,7 @@
 
     <string name="help_explore_heading">Исследуй</string>
     <string name="help_explore_line1">Веди пальцем, чтобы осмотреться, сжимай для масштаба.</string>
-    <string name="help_explore_line2">Открытая земля остаётся видна навсегда.</string>
+    <string name="help_explore_line2">Исследуй все берега, чтобы полностью открыть озеро или скалы.</string>
     <string name="help_build_heading">Строй</string>
     <string name="help_build_line1">Открой «Строить» и выбери, что по карману.</string>
     <string name="help_build_line2">Некоторым зданиям нужна вода, лес или камень рядом.</string>

@@ -76,7 +76,7 @@
 
     <string name="help_explore_heading">Explore</string>
     <string name="help_explore_line1">Drag to look around, pinch to zoom, tap a tile to walk.</string>
-    <string name="help_explore_line2">Land stays discovered forever once you\'ve seen it.</string>
+    <string name="help_explore_line2">Survey every shore to reveal a lake or rocky area completely.</string>
     <string name="help_build_heading">Build</string>
     <string name="help_build_line1">Open Build and choose what you can afford.</string>
     <string name="help_build_line2">Some buildings need water, forest, or stone nearby.</string>

@@ -15,9 +15,9 @@ import android.util.SparseArray;
 
 /**
  * The one and only world-art source: Kenney's CC0 Roguelike/RPG sheet also used by
- * crystal-trail. Every ground tile, shoreline, prop, building, and world-map marker is cut from
- * this sheet and enlarged with nearest-neighbor scaling, so no foreign flat-color tiles can leak
- * into the map. See {@code third_party/kenney/KENNEY_LICENSE.txt}.
+ * crystal-trail. Every ground tile, shoreline, prop, and world-map marker is cut from this sheet
+ * and enlarged with nearest-neighbor scaling. Buildings use the project's matching original
+ * pixel sheet so each economic role has an unmistakable silhouette. See {@code ART.md}.
  */
 final class TerrainSprites {
     private static final int SHEET_COLUMNS = 57;
@@ -75,19 +75,7 @@ final class TerrainSprites {
         };
         waterLily = prop(11, 25, 1, 1);
 
-        buildingSprites = new Bitmap[]{
-                prop(10, 48, 2, 2), // Town Hall: beige pavilion
-                prop(23, 54, 1, 1), // Fishing Dock: water rock
-                prop(10, 13, 2, 1), // Lumber Camp
-                prop(21, 54, 1, 1), // Quarry
-                prop(10, 24, 1, 1), // Catnip Farm
-                prop(4, 48, 1, 1),  // Weaver's Cottage
-                prop(10, 46, 2, 2), // Kitten Cottage: green pavilion
-                prop(11, 43, 1, 1), // Storage Barn
-                prop(10, 50, 2, 1), // Scholar's Den
-                tileAt(FLOWERS[0]),  // Cozy Plaza
-                prop(24, 41, 1, 1), // Crystal Mine
-        };
+        buildingSprites = loadBuildingSprites(resources);
         settlementSprites = new Bitmap[]{
                 prop(10, 46, 2, 2), prop(10, 48, 2, 2),
                 prop(10, 50, 2, 1), prop(24, 41, 1, 1),
@@ -191,6 +179,25 @@ final class TerrainSprites {
 
     Bitmap settlementFor(int settlementId) {
         return settlementSprites[Math.floorMod(settlementId, settlementSprites.length)];
+    }
+
+    private Bitmap[] loadBuildingSprites(Resources resources) {
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inScaled = false;
+        Bitmap buildingSheet = BitmapFactory.decodeResource(
+                resources, R.drawable.building_icons, options);
+        int expectedWidth = BuildingType.COUNT * OUTPUT_CELL;
+        if (buildingSheet == null || buildingSheet.getWidth() != expectedWidth
+                || buildingSheet.getHeight() != OUTPUT_CELL) {
+            throw new IllegalStateException("Building sprite sheet must be "
+                    + expectedWidth + "x" + OUTPUT_CELL + " pixels");
+        }
+        Bitmap[] result = new Bitmap[BuildingType.COUNT];
+        for (int buildingId = 0; buildingId < result.length; buildingId++) {
+            result[buildingId] = Bitmap.createBitmap(buildingSheet,
+                    buildingId * OUTPUT_CELL, 0, OUTPUT_CELL, OUTPUT_CELL);
+        }
+        return result;
     }
 
     private Bitmap tileAt(int tileIndex) {

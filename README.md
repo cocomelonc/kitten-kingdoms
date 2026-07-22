@@ -51,7 +51,10 @@ The pause card uses the same EN/RU switch as every other screen:
 
 - **Explore**: drag to pan the map, pinch to zoom, tap a tile to walk the
   kitten there. Fog of war reveals permanently in a radius around every tile
-  the kitten visits - once seen, land stays known.
+  the kitten visits - once seen, land stays known. When every reachable edge
+  of a lake or stone outcrop has been surveyed, its inaccessible centre is
+  revealed automatically. Exploring all walkable land is guaranteed to reveal
+  every one of the world's 96x96 cells for every generated seed.
 - **Build**: once a tile is discovered, open *Build* and place any building
   you can afford there instantly; no need to walk the kitten to the site
   itself. Some buildings need to be adjacent to specific terrain (a Fishing
@@ -102,10 +105,12 @@ economy, just so the kingdom doesn't feel empty.
 - English and Russian resources bundled in every APK/AAB.
 - Original procedural chimes and calm background music; no sampled audio
   files or codec dependency.
-- The entire playable world uses one CC0 Kenney pixel tilesheet, including
-  every terrain edge, prop, building, and regional marker. The animated
-  kitten and wildlife sheets are original MIT-licensed project art; Canvas is
-  reserved for scalable interface chrome - see [ART.md](ART.md).
+- The terrain uses one CC0 Kenney pixel tilesheet, including every shoreline,
+  ground edge, prop, and regional marker. Buildings use an original matching
+  eleven-frame sprite sheet whose silhouettes communicate their purpose at a
+  glance. The animated kitten and wildlife sheets are also original
+  MIT-licensed project art; Canvas is reserved for scalable interface chrome
+  - see [ART.md](ART.md).
 
 ### Android configuration
 
@@ -176,7 +181,8 @@ The unit tests validate every content registry (terrain, resources,
 buildings, technologies), prove the technology tree is acyclic and fully
 reachable from its root, flood-fill the generated terrain for full
 connectivity from the kitten's starting tile, validate every generated water
-edge against the tilesheet's shoreline vocabulary, drive the turn-based economy
+edge against the tilesheet's shoreline vocabulary, prove across 128 generated
+seeds that exhaustive land exploration uncovers every map cell, drive the turn-based economy
 through production, storage caps, population growth, tech-gated and
 terrain-gated building placement, and upkeep shortfalls, exercise envoy,
 courier, gift, and trade-route rules, and round-trip and migrate the save
@@ -222,7 +228,7 @@ app/src/main/java/com/cocomelonc/kittenkingdoms/
   WildlifeCritter.java    decorative background creature: no AI, just wanders
   Settlement.java         the four neighbouring settlement definitions
   DiplomacySystem.java    relationship, travel, gifts, and trade-route rules
-  TerrainSprites.java     slices/caches one CC0 Kenney world tilesheet
+  TerrainSprites.java     slices/caches the Kenney world and original building sheets
   KittenSprites.java      four-direction, four-frame kitten animation loader
   WildlifeSprites.java    two-frame wildlife animation loader
   TurnMath.java           stateless per-turn economy formulas
@@ -230,11 +236,11 @@ app/src/main/java/com/cocomelonc/kittenkingdoms/
   KingdomSerializer.java  zero-dependency versioned binary save format
   AudioEngine.java        tiny procedural chime synthesizer
   MusicEngine.java        calm original procedural background music
-app/src/main/res/drawable-nodpi/  Kenney sheet and original animated sprite sheets
+app/src/main/res/drawable-nodpi/  Kenney terrain and original character/building sheets
 app/src/test/             terrain, economy, diplomacy, and save-format tests
 art/                      open-source cover, screenshots, and editable sprite sources
 third_party/nunito/       exact SIL OFL license for the bundled font
-third_party/kenney/       exact CC0 license for the terrain/building tiles
+third_party/kenney/       exact CC0 license for the terrain and regional markers
 scripts/                  reproducible Android verification
 ```
 

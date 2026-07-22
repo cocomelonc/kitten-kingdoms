@@ -99,6 +99,7 @@ final class WorldMap {
                 }
             }
         }
+        revealFullySurveyedFeatures();
     }
 
     boolean[][] exploredSnapshot() {
@@ -113,6 +114,110 @@ final class WorldMap {
         for (int r = 0; r < SIZE; r++) {
             System.arraycopy(snapshot[r], 0, explored[r], 0, SIZE);
         }
+        // Older saves may already contain a completely explored shoreline with a fogged-in
+        // lake or outcrop core. Apply the current survey rule as part of migration/load.
+        revealFullySurveyedFeatures();
+    }
+
+    /**
+     * Reveals the inaccessible core of a natural feature once its entire reachable boundary has
+     * been surveyed. Water and stone cannot be walked on, so a purely radius-based fog rule can
+     * otherwise leave permanent dark cells in the middle of a wide lake or outcrop. The feature
+     * remains hidden while even one adjacent walkable shore tile is unexplored, preventing a
+     * single shoreline glimpse from revealing a distant lake-and-river network.
+     */
+    private void revealFullySurveyedFeatures() {
+        boolean[][] visited = new boolean[SIZE][SIZE];
+        int[] cardinalRow = {-1, 1, 0, 0};
+        int[] cardinalCol = {0, 0, -1, 1};
+
+        for (int startRow = 0; startRow < SIZE; startRow++) {
+            for (int startCol = 0; startCol < SIZE; startCol++) {
+                if (visited[startRow][startCol] || isTerrainWalkable(startRow, startCol)) {
+                    continue;
+                }
+
+                int featureTerrain = terrain[startRow][startCol];
+                ArrayDeque<Integer> queue = new ArrayDeque<>();
+                ArrayList<Integer> featureCells = new ArrayList<>();
+                queue.add(encode(startRow, startCol));
+                visited[startRow][startCol] = true;
+                boolean hasWalkableBoundary = false;
+                boolean boundaryFullyExplored = true;
+
+                while (!queue.isEmpty()) {
+                    int encoded = queue.removeFirst();
+                    int row = encoded / SIZE;
+                    int col = encoded % SIZE;
+                    featureCells.add(encoded);
+
+                    for (int dr = -1; dr <= 1; dr++) {
+                        for (int dc = -1; dc <= 1; dc++) {
+                            if (dr == 0 && dc == 0) {
+                                continue;
+                            }
+                            int neighborRow = row + dr;
+                            int neighborCol = col + dc;
+                            if (!inBounds(neighborRow, neighborCol)
+                                    || !isTerrainWalkable(neighborRow, neighborCol)) {
+                                continue;
+                            }
+                            hasWalkableBoundary = true;
+                            if (!explored[neighborRow][neighborCol]) {
+                                boundaryFullyExplored = false;
+                            }
+                        }
+                    }
+
+                    for (int direction = 0; direction < cardinalRow.length; direction++) {
+                        int neighborRow = row + cardinalRow[direction];
+                        int neighborCol = col + cardinalCol[direction];
+                        if (!inBounds(neighborRow, neighborCol)
+                                || visited[neighborRow][neighborCol]
+                                || terrain[neighborRow][neighborCol] != featureTerrain) {
+                            continue;
+                        }
+                        visited[neighborRow][neighborCol] = true;
+                        queue.add(encode(neighborRow, neighborCol));
+                    }
+                }
+
+                if (hasWalkableBoundary && boundaryFullyExplored) {
+                    for (int encoded : featureCells) {
+                        explored[encoded / SIZE][encoded % SIZE] = true;
+                    }
+                }
+            }
+        }
+
+        // Absolute completion guarantee for unusual generated layouts where one impassable
+        // feature is completely nested inside another and therefore has no walkable shoreline.
+        if (isEveryWalkableTileExplored()) {
+            for (int row = 0; row < SIZE; row++) {
+                for (int col = 0; col < SIZE; col++) {
+                    explored[row][col] = true;
+                }
+            }
+        }
+    }
+
+    private boolean isEveryWalkableTileExplored() {
+        for (int row = 0; row < SIZE; row++) {
+            for (int col = 0; col < SIZE; col++) {
+                if (isTerrainWalkable(row, col) && !explored[row][col]) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private boolean isTerrainWalkable(int row, int col) {
+        return terrainTypes[terrain[row][col]].walkable;
+    }
+
+    private static int encode(int row, int col) {
+        return row * SIZE + col;
     }
 
     private static byte[][] generateTerrain(long seed) {

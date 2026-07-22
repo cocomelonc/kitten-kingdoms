@@ -74,6 +74,28 @@ public final class WorldMapTest {
     }
 
     @Test
+    public void fullyExploringReachableLandRevealsEveryCellForEveryGeneratedWorld() {
+        for (long seed = 0; seed < 128; seed++) {
+            WorldMap map = new WorldMap(seed);
+            boolean[][] allReachableLandExplored = new boolean[WorldMap.SIZE][WorldMap.SIZE];
+            for (int row = 0; row < WorldMap.SIZE; row++) {
+                for (int col = 0; col < WorldMap.SIZE; col++) {
+                    allReachableLandExplored[row][col] = map.isWalkable(row, col);
+                }
+            }
+
+            map.restoreExplored(allReachableLandExplored);
+
+            for (int row = 0; row < WorldMap.SIZE; row++) {
+                for (int col = 0; col < WorldMap.SIZE; col++) {
+                    assertTrue("Permanently hidden tile for seed " + seed + " at " + row + "," + col,
+                            map.isExplored(row, col));
+                }
+            }
+        }
+    }
+
+    @Test
     public void openingMeadowShowsEveryTerrainNeededByTheGame() {
         WorldMap map = new WorldMap();
         map.revealAround(WorldMap.START_ROW, WorldMap.START_COL);
