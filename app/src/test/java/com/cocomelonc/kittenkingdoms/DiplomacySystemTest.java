@@ -131,4 +131,54 @@ public final class DiplomacySystemTest {
             assertEquals(2, sellOffers);
         }
     }
+
+    /**
+     * The regional market must never let a player mint Crystals out of nothing: for every
+     * resource, no kingdom may sell a unit for more Crystals than another kingdom charges to
+     * buy that same unit back. Otherwise a player with two trade routes can loop buy-low /
+     * sell-high forever and defeat the whole scarcity-driven economy. Catnip and Yarn are
+     * already balanced exactly this way; Wood, Stone, and Fish must match.
+     */
+    @Test
+    public void marketOffersLeaveNoCrossKingdomCrystalArbitrage() {
+        MarketOffer[] all = collectOffers();
+        for (int resource = 0; resource < ResourceType.COUNT; resource++) {
+            for (MarketOffer sell : all) {
+                if (!sell.isPlayerSelling() || sell.giveResourceId != resource) {
+                    continue;
+                }
+                for (MarketOffer buy : all) {
+                    if (buy.isPlayerSelling() || buy.receiveResourceId != resource) {
+                        continue;
+                    }
+                    // sell value (crystals per unit) = sell.receiveAmount / sell.giveAmount
+                    // buy cost  (crystals per unit) = buy.giveAmount   / buy.receiveAmount
+                    // arbitrage-free <=> sellValue <= buyCost, cross-multiplied to avoid floats.
+                    long sellValue = (long) sell.receiveAmount * buy.receiveAmount;
+                    long buyCost = (long) buy.giveAmount * sell.giveAmount;
+                    assertTrue("Crystal arbitrage on " + resource
+                                    + ": selling " + sell.giveAmount + " for " + sell.receiveAmount
+                                    + "cr beats buying " + buy.receiveAmount + " for "
+                                    + buy.giveAmount + "cr",
+                            sellValue <= buyCost);
+                }
+            }
+        }
+    }
+
+    private static MarketOffer[] collectOffers() {
+        Settlement[] settlements = new DiplomacySystem().getSettlements();
+        int total = 0;
+        for (Settlement settlement : settlements) {
+            total += settlement.marketOffers.length;
+        }
+        MarketOffer[] all = new MarketOffer[total];
+        int index = 0;
+        for (Settlement settlement : settlements) {
+            for (MarketOffer offer : settlement.marketOffers) {
+                all[index++] = offer;
+            }
+        }
+        return all;
+    }
 }
