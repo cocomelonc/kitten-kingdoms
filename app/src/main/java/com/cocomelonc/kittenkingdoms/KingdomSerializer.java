@@ -19,7 +19,8 @@ import java.util.ArrayList;
  * so the caller can fall back to a fresh kingdom rather than crash.
  */
 final class KingdomSerializer {
-    private static final int SAVE_VERSION = 3;
+    private static final int SAVE_VERSION = 4;
+    private static final int DIPLOMACY_SAVE_VERSION = 3;
     private static final int LEGACY_SAVE_VERSION = 2;
     private static final int MAX_PLAUSIBLE_BUILDINGS = 100_000;
 
@@ -41,20 +42,21 @@ final class KingdomSerializer {
         }
         out.writeInt(data.buildings.size());
         for (int[] building : data.buildings) {
-            out.writeInt(building[0]);
-            out.writeInt(building[1]);
-            out.writeInt(building[2]);
-            out.writeInt(building[3]);
+            for (int field = 0; field < 7; field++) {
+                out.writeInt(valueAt(building, field));
+            }
         }
         writeExploredBits(out, data.explored);
         writeDiplomacy(out, data);
+        writeWorkers(out, data);
         out.flush();
     }
 
     static KingdomSaveData read(InputStream rawIn) throws IOException {
         DataInputStream in = new DataInputStream(rawIn);
         int version = in.readInt();
-        if (version != SAVE_VERSION && version != LEGACY_SAVE_VERSION) {
+        if (version != SAVE_VERSION && version != DIPLOMACY_SAVE_VERSION
+                && version != LEGACY_SAVE_VERSION) {
             throw new IOException("Unsupported save version: " + version);
         }
         KingdomSaveData data = new KingdomSaveData();
@@ -75,13 +77,51 @@ final class KingdomSerializer {
         }
         data.buildings = new ArrayList<>(buildingCount);
         for (int i = 0; i < buildingCount; i++) {
-            data.buildings.add(new int[]{in.readInt(), in.readInt(), in.readInt(), in.readInt()});
+            if (version >= 4) {
+                data.buildings.add(new int[]{in.readInt(), in.readInt(), in.readInt(), in.readInt(),
+                        in.readInt(), in.readInt(), in.readInt()});
+            } else {
+                int typeId = in.readInt();
+                int row = in.readInt();
+                int col = in.readInt();
+                int turnsRemaining = in.readInt();
+                data.buildings.add(new int[]{i, typeId, row, col, turnsRemaining,
+                        ResourceType.NONE, 0});
+            }
         }
         data.explored = readExploredBits(in);
         if (version >= 3) {
             readDiplomacy(in, data);
         }
+        if (version >= 4) {
+            readWorkers(in, data);
+        }
         return data;
+    }
+
+    private static void writeWorkers(DataOutputStream out, KingdomSaveData data) throws IOException {
+        int count = data.workers == null ? 0 : data.workers.size();
+        out.writeInt(count);
+        if (data.workers == null) {
+            return;
+        }
+        for (int[] worker : data.workers) {
+            for (int field = 0; field < 6; field++) {
+                out.writeInt(valueAt(worker, field));
+            }
+        }
+    }
+
+    private static void readWorkers(DataInputStream in, KingdomSaveData data) throws IOException {
+        int count = in.readInt();
+        if (count < 0 || count > WorldMap.SIZE * WorldMap.SIZE) {
+            throw new IOException("Implausible worker count: " + count);
+        }
+        data.workers = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            data.workers.add(new int[]{in.readInt(), in.readInt(), in.readInt(), in.readInt(),
+                    in.readInt(), in.readInt()});
+        }
     }
 
     private static void writeDiplomacy(DataOutputStream out, KingdomSaveData data) throws IOException {

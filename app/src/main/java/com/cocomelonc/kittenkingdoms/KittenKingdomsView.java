@@ -45,7 +45,8 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     private enum Overlay {
         NONE,
         BUILD_MENU,
-        WORLD_MAP
+        WORLD_MAP,
+        BUILDING_PANEL
     }
 
     private static final float WORLD_WIDTH = 1280f;
@@ -132,6 +133,7 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     private String currentNotificationText;
     private float currentNotificationRemaining;
     private int selectedSettlementId = Settlement.RIVERWHISKER;
+    private int selectedBuildingId = BuildingType.NONE;
 
     KittenKingdomsView(Context context) {
         super(context);
@@ -337,6 +339,9 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         if (activeOverlay == Overlay.BUILD_MENU) {
             drawBuildMenu(canvas);
         }
+        if (activeOverlay == Overlay.BUILDING_PANEL) {
+            drawBuildingPanel(canvas);
+        }
 
         if (world.getState() == KingdomWorld.State.PAUSED) {
             drawPauseOverlay(canvas, time);
@@ -374,6 +379,33 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
             float cx = building.col * TILE + TILE / 2f;
             float cy = building.row * TILE + TILE / 2f;
             drawBuildingToken(canvas, building.typeId, cx, cy, !building.isComplete(), time);
+            drawBuildingStatus(canvas, building, cx, cy, time);
+        }
+
+        for (WorkerKitten worker : world.getWorkers()) {
+            int workerRow = (int) worker.visualRow;
+            int workerCol = (int) worker.visualCol;
+            if (workerRow < firstRow || workerRow > lastRow
+                    || workerCol < firstCol || workerCol > lastCol
+                    || !map.isExplored(worker.row, worker.col)) {
+                continue;
+            }
+            float workerX = worker.visualCol * TILE + TILE / 2f;
+            float workerY = worker.visualRow * TILE + TILE / 2f;
+            canvas.save();
+            canvas.translate(workerX, workerY);
+            canvas.scale(0.82f, 0.82f);
+            drawKittenAtOrigin(canvas, time + worker.id * 0.37f,
+                    worker.facingDirection, worker.isMoving());
+            paint.setColor(workerColor(worker.id));
+            canvas.drawCircle(22f, -22f, 7f, paint);
+            if (worker.state == WorkerKitten.CONSTRUCTING) {
+                drawHammer(canvas, 0f, -50f, 0.9f);
+            } else if (worker.carriedAmount > 0) {
+                drawResourceBubble(canvas, worker.carriedResourceId, worker.carriedAmount,
+                        0f, -56f, 0.92f);
+            }
+            canvas.restore();
         }
 
         for (WildlifeCritter critter : wildlifeCritters) {
@@ -468,6 +500,57 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         }
     }
 
+    private void drawBuildingStatus(Canvas canvas, PlacedBuilding building, float cx, float cy, float time) {
+        if (building.hasReadyGoods()) {
+            float bob = (float) Math.sin(time * 3f + building.id) * 2f;
+            drawResourceBubble(canvas, building.pendingResourceId, building.pendingAmount,
+                    cx, cy - 43f + bob, 1f);
+            return;
+        }
+        if (!building.isComplete() && world.getConstructionWorker(building.id) == null) {
+            paint.setColor(0xF8FFF9E9);
+            canvas.drawCircle(cx, cy - 38f, 17f, paint);
+            drawFittedText(canvas, "!", cx, cy - 31f, 22f, 20f, 0xFFD07062, true);
+        } else if (world.needsWorker(building.id)) {
+            paint.setColor(0xF8FFF9E9);
+            canvas.drawCircle(cx, cy - 38f, 17f, paint);
+            paint.setColor(0xFF8A7357);
+            canvas.drawCircle(cx - 3f, cy - 42f, 5f, paint);
+            canvas.drawRoundRect(cx - 10f, cy - 37f, cx + 4f, cy - 28f, 5f, 5f, paint);
+            paint.setStrokeWidth(3f);
+            canvas.drawLine(cx + 8f, cy - 37f, cx + 8f, cy - 27f, paint);
+            canvas.drawLine(cx + 3f, cy - 32f, cx + 13f, cy - 32f, paint);
+        }
+    }
+
+    private void drawResourceBubble(Canvas canvas, int resourceId, int amount,
+                                    float cx, float cy, float scale) {
+        paint.setColor(0xEFFFFAEF);
+        canvas.drawRoundRect(cx - 27f * scale, cy - 17f * scale,
+                cx + 27f * scale, cy + 17f * scale, 17f * scale, 17f * scale, paint);
+        drawResourceIcon(canvas, resourceId, cx - 10f * scale, cy, 12f * scale);
+        drawFittedText(canvas, String.valueOf(amount), cx + 13f * scale, cy + 6f * scale,
+                15f * scale, 22f * scale, 0xFF443C2E, true);
+    }
+
+    private void drawHammer(Canvas canvas, float cx, float cy, float scale) {
+        paint.setStrokeCap(Paint.Cap.ROUND);
+        paint.setStrokeWidth(5f * scale);
+        paint.setColor(0xFF9B7550);
+        canvas.drawLine(cx - 7f * scale, cy + 9f * scale,
+                cx + 5f * scale, cy - 8f * scale, paint);
+        paint.setStrokeWidth(8f * scale);
+        paint.setColor(0xFFA8A2AC);
+        canvas.drawLine(cx - 2f * scale, cy - 11f * scale,
+                cx + 11f * scale, cy - 2f * scale, paint);
+        paint.setStrokeCap(Paint.Cap.BUTT);
+    }
+
+    private int workerColor(int workerId) {
+        int[] colors = {0xFFD88FB0, 0xFF6FB0D8, 0xFF8FC15C, 0xFFE9B65C, 0xFF8E7CD8};
+        return colors[Math.floorMod(workerId, colors.length)];
+    }
+
     private void drawGridOverlayIfPlacing(Canvas canvas) {
         if (world.getPendingBuildingTypeId() == BuildingType.NONE) {
             return;
@@ -502,15 +585,15 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         float slotWidth = 740f / resourceTypes.length;
         for (int i = 0; i < resourceTypes.length; i++) {
             float cx = 55f + i * slotWidth;
-            paint.setColor(resourceTypes[i].color);
-            canvas.drawCircle(cx, 47f, 11f, paint);
+            drawResourceIcon(canvas, i, cx, 47f, 13f);
             drawFittedText(canvas, String.valueOf(world.getResource(i)), cx + 42f, 54f,
                     24f, 90f, 0xFF443C2E, true);
         }
 
         drawPill(canvas, 800f, 16f, 1150f, 78f, 0xDFFDFAF0, 0x1E3E3226);
         drawFittedText(canvas, text(R.string.turn_label) + " " + world.getTurn()
-                        + "   " + text(R.string.population_label) + " " + world.getPopulation() + "/" + world.getHousingCap(),
+                        + "   " + text(R.string.population_label) + " " + world.getPopulation() + "/" + world.getHousingCap()
+                        + "   " + text(R.string.workers_short) + " " + world.getWorkerCount(),
                 975f, 54f, 21f, 330f, 0xFF443C2E, true);
 
         paint.setColor(0xEFFDFAF0);
@@ -523,6 +606,82 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         drawBottomButton(canvas, RESEARCH_BTN_CX, text(R.string.tech_tree_title), 0xFFC9DCEF);
         drawBottomButton(canvas, WORLD_MAP_BTN_CX, text(R.string.world_map_button), 0xFFE7D3EC);
         drawBottomButton(canvas, END_TURN_BTN_CX, text(R.string.end_turn), 0xFFC7E4C9);
+    }
+
+    private void drawResourceIcon(Canvas canvas, int resourceId, float cx, float cy, float size) {
+        paint.setStyle(Paint.Style.FILL);
+        switch (resourceId) {
+            case ResourceType.FISH:
+                paint.setColor(0xFF6FB0D8);
+                canvas.drawOval(cx - size * 0.7f, cy - size * 0.38f,
+                        cx + size * 0.45f, cy + size * 0.38f, paint);
+                path.reset();
+                path.moveTo(cx + size * 0.35f, cy);
+                path.lineTo(cx + size * 0.9f, cy - size * 0.5f);
+                path.lineTo(cx + size * 0.9f, cy + size * 0.5f);
+                path.close();
+                canvas.drawPath(path, paint);
+                paint.setColor(0xFFF9F5E8);
+                canvas.drawCircle(cx - size * 0.38f, cy - size * 0.1f, size * 0.1f, paint);
+                break;
+            case ResourceType.WOOD:
+                paint.setColor(0xFF9B7550);
+                canvas.drawRoundRect(cx - size * 0.8f, cy - size * 0.38f,
+                        cx + size * 0.7f, cy + size * 0.38f, size * 0.34f, size * 0.34f, paint);
+                paint.setColor(0xFFD2A56F);
+                canvas.drawCircle(cx + size * 0.66f, cy, size * 0.32f, paint);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(Math.max(1.5f, size * 0.1f));
+                paint.setColor(0xFF8B6545);
+                canvas.drawCircle(cx + size * 0.66f, cy, size * 0.17f, paint);
+                paint.setStyle(Paint.Style.FILL);
+                break;
+            case ResourceType.STONE:
+                paint.setColor(0xFFA8A2AC);
+                path.reset();
+                path.moveTo(cx - size * 0.8f, cy + size * 0.45f);
+                path.lineTo(cx - size * 0.48f, cy - size * 0.5f);
+                path.lineTo(cx + size * 0.3f, cy - size * 0.72f);
+                path.lineTo(cx + size * 0.82f, cy + size * 0.15f);
+                path.lineTo(cx + size * 0.42f, cy + size * 0.55f);
+                path.close();
+                canvas.drawPath(path, paint);
+                break;
+            case ResourceType.CATNIP:
+                paint.setColor(0xFF8FC15C);
+                canvas.save();
+                canvas.rotate(-32f, cx, cy);
+                canvas.drawOval(cx - size * 0.65f, cy - size * 0.22f,
+                        cx + size * 0.1f, cy + size * 0.32f, paint);
+                canvas.drawOval(cx - size * 0.05f, cy - size * 0.42f,
+                        cx + size * 0.72f, cy + size * 0.12f, paint);
+                canvas.restore();
+                break;
+            case ResourceType.YARN:
+                paint.setColor(0xFFD88FB0);
+                canvas.drawCircle(cx, cy, size * 0.72f, paint);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(Math.max(1.5f, size * 0.11f));
+                paint.setColor(0xFFF9D7E7);
+                canvas.drawArc(cx - size * 0.55f, cy - size * 0.38f,
+                        cx + size * 0.55f, cy + size * 0.38f, -20f, 215f, false, paint);
+                canvas.drawLine(cx - size * 0.45f, cy + size * 0.35f,
+                        cx + size * 0.48f, cy - size * 0.3f, paint);
+                paint.setStyle(Paint.Style.FILL);
+                break;
+            case ResourceType.CRYSTALS:
+            default:
+                paint.setColor(0xFF8E7CD8);
+                path.reset();
+                path.moveTo(cx, cy - size * 0.9f);
+                path.lineTo(cx + size * 0.62f, cy - size * 0.1f);
+                path.lineTo(cx + size * 0.32f, cy + size * 0.82f);
+                path.lineTo(cx - size * 0.5f, cy + size * 0.45f);
+                path.lineTo(cx - size * 0.62f, cy - size * 0.2f);
+                path.close();
+                canvas.drawPath(path, paint);
+                break;
+        }
     }
 
     private void drawBottomButton(Canvas canvas, float cx, String label, int fill) {
@@ -829,6 +988,106 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
             builder.append(type.cost[i]).append(' ').append(text(resourceTypes[i].nameRes));
         }
         return builder.length() == 0 ? "" : builder.toString();
+    }
+
+    private void drawBuildingPanel(Canvas canvas) {
+        PlacedBuilding building = world.getBuilding(selectedBuildingId);
+        if (building == null) {
+            activeOverlay = Overlay.NONE;
+            return;
+        }
+        BuildingType type = world.getBuildingTypes()[building.typeId];
+        drawModalScrim(canvas);
+        drawModalCard(canvas);
+        drawFittedText(canvas, text(type.nameRes), 640f, 138f,
+                34f, 900f, 0xFF443C2E, true);
+
+        canvas.save();
+        canvas.translate(350f, 315f);
+        canvas.scale(2.15f, 2.15f);
+        drawBuildingToken(canvas, type.id, 0f, 0f, !building.isComplete(), 0f);
+        canvas.restore();
+
+        float infoX = 735f;
+        if (!building.isComplete()) {
+            drawFittedText(canvas, text(R.string.construction_site), infoX, 238f,
+                    25f, 600f, 0xFF6D5D45, true);
+            drawFittedText(canvas, String.format(text(R.string.construction_steps_left),
+                            building.turnsRemaining), infoX, 284f,
+                    20f, 600f, 0xFF74694F, false);
+            WorkerKitten builder = world.getConstructionWorker(building.id);
+            String builderText = builder == null ? text(R.string.waiting_for_builder)
+                    : String.format(text(R.string.kitten_number), builder.id + 1)
+                    + " · " + workerStateText(builder);
+            drawFittedText(canvas, builderText, infoX, 330f,
+                    20f, 600f, builder == null ? 0xFFD07062 : 0xFF557A59, true);
+        } else if (type.id == BuildingType.TOWN_HALL) {
+            drawFittedText(canvas, text(R.string.workforce_heading), infoX, 238f,
+                    25f, 600f, 0xFF6D5D45, true);
+            drawFittedText(canvas, String.format(text(R.string.workforce_count),
+                            world.getWorkerCount(), world.getPopulation()), infoX, 286f,
+                    21f, 600f, 0xFF74694F, false);
+            drawFittedText(canvas, String.format(text(R.string.hire_cost),
+                            KingdomWorld.HIRE_FISH_COST, KingdomWorld.HIRE_CATNIP_COST), infoX, 330f,
+                    18f, 600f, 0xFF74694F, false);
+            drawActionButton(canvas, infoX, 430f, text(R.string.hire_kitten), world.canHireWorker());
+        } else if (world.getOutputResourceId(type.id) != ResourceType.NONE) {
+            int outputResource = world.getOutputResourceId(type.id);
+            int output = type.outputPerTurn[outputResource];
+            drawFittedText(canvas, text(R.string.production_heading), infoX, 226f,
+                    25f, 600f, 0xFF6D5D45, true);
+            drawResourceIcon(canvas, outputResource, infoX - 87f, 273f, 15f);
+            drawFittedText(canvas, String.format(text(R.string.production_per_turn), output,
+                            text(ResourceType.createAll()[outputResource].nameRes)), infoX + 30f, 280f,
+                    20f, 430f, 0xFF74694F, false);
+            String ready = building.hasReadyGoods()
+                    ? String.format(text(R.string.goods_waiting), building.pendingAmount)
+                    : text(R.string.no_goods_waiting);
+            drawFittedText(canvas, ready, infoX, 326f, 20f, 600f,
+                    building.hasReadyGoods() ? 0xFF557A59 : 0xFF908777, true);
+            WorkerKitten assigned = world.getAssignedWorker(building.id);
+            String assignment = assigned == null ? text(R.string.no_worker_assigned)
+                    : String.format(text(R.string.worker_assignment), assigned.id + 1,
+                    workerStateText(assigned));
+            drawFittedText(canvas, assignment, infoX, 372f, 19f, 600f,
+                    assigned == null ? 0xFFD07062 : 0xFF557A59, true);
+            drawActionButton(canvas, infoX, 452f,
+                    assigned == null ? text(R.string.assign_kitten) : text(R.string.release_kitten), true);
+        } else {
+            drawFittedText(canvas, text(R.string.passive_building), infoX, 260f,
+                    23f, 600f, 0xFF6D5D45, true);
+            drawFittedText(canvas, text(R.string.no_worker_needed), infoX, 312f,
+                    20f, 600f, 0xFF74694F, false);
+        }
+
+        drawPill(canvas, (MODAL_LEFT + MODAL_RIGHT) / 2f - 90f, MODAL_BOTTOM - 60f,
+                (MODAL_LEFT + MODAL_RIGHT) / 2f + 90f, MODAL_BOTTOM - 20f, 0xFFE9DDCB, 0x1E443C2E);
+        drawFittedText(canvas, text(R.string.close_button), (MODAL_LEFT + MODAL_RIGHT) / 2f,
+                MODAL_BOTTOM - 32f, 20f, 160f, 0xFF443C2E, true);
+    }
+
+    private void drawActionButton(Canvas canvas, float cx, float cy, String label, boolean enabled) {
+        drawPill(canvas, cx - 155f, cy - 28f, cx + 155f, cy + 28f,
+                enabled ? 0xFFC7E4C9 : 0xFFE5E1D7, 0x1E443C2E);
+        drawFittedText(canvas, label, cx, cy + 7f, 20f, 280f,
+                enabled ? 0xFF443C2E : 0xFF9A9284, true);
+    }
+
+    private String workerStateText(WorkerKitten worker) {
+        switch (worker.state) {
+            case WorkerKitten.TO_CONSTRUCTION:
+            case WorkerKitten.TO_WORK:
+                return text(R.string.worker_walking);
+            case WorkerKitten.CONSTRUCTING:
+                return text(R.string.worker_building);
+            case WorkerKitten.WORKING:
+            case WorkerKitten.COLLECTING:
+                return text(R.string.worker_working);
+            case WorkerKitten.TO_STORAGE:
+                return text(R.string.worker_delivering);
+            default:
+                return text(R.string.worker_idle);
+        }
     }
 
     private void drawModalScrim(Canvas canvas) {
@@ -1256,8 +1515,56 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         }
         if (activeOverlay == Overlay.BUILD_MENU) {
             handleBuildMenuTap(logicalX, logicalY);
+        } else if (activeOverlay == Overlay.BUILDING_PANEL) {
+            handleBuildingPanelTap(logicalX, logicalY);
         }
         invalidate();
+    }
+
+    private void handleBuildingPanelTap(float logicalX, float logicalY) {
+        PlacedBuilding building = world.getBuilding(selectedBuildingId);
+        if (building == null || !building.isComplete()) {
+            return;
+        }
+        if (building.typeId == BuildingType.TOWN_HALL
+                && isInsidePill(logicalX, logicalY, 735f, 430f, 155f, 28f)) {
+            showWorkforceResult(world.hireWorker(), R.string.notify_worker_hired);
+            return;
+        }
+        if (world.getOutputResourceId(building.typeId) != ResourceType.NONE
+                && isInsidePill(logicalX, logicalY, 735f, 452f, 155f, 28f)) {
+            WorkerKitten assigned = world.getAssignedWorker(building.id);
+            int result = assigned == null
+                    ? world.assignWorker(building.id) : world.unassignWorker(building.id);
+            showWorkforceResult(result, assigned == null
+                    ? R.string.notify_worker_assigned : R.string.notify_worker_released);
+        }
+    }
+
+    private void showWorkforceResult(int result, int successMessageRes) {
+        int messageRes;
+        switch (result) {
+            case KingdomWorld.WORKFORCE_OK:
+                messageRes = successMessageRes;
+                performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
+                saveKingdom();
+                break;
+            case KingdomWorld.WORKFORCE_NO_KITTEN:
+                messageRes = R.string.workforce_no_idle;
+                performHapticFeedback(HapticFeedbackConstants.REJECT);
+                break;
+            case KingdomWorld.WORKFORCE_NEEDS_RESOURCES:
+                messageRes = R.string.workforce_needs_resources;
+                performHapticFeedback(HapticFeedbackConstants.REJECT);
+                break;
+            case KingdomWorld.WORKFORCE_POPULATION_LIMIT:
+                messageRes = R.string.workforce_population_limit;
+                performHapticFeedback(HapticFeedbackConstants.REJECT);
+                break;
+            default:
+                return;
+        }
+        enqueueNotification(text(messageRes));
     }
 
     private void handleWorldMapOverlayTap(float logicalX, float logicalY) {
@@ -1422,6 +1729,16 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         int col = (int) Math.floor(worldX / TILE);
         int row = (int) Math.floor(worldY / TILE);
         int pendingBuildingTypeId = world.getPendingBuildingTypeId();
+        if (pendingBuildingTypeId == BuildingType.NONE) {
+            PlacedBuilding building = world.getBuildingAt(row, col);
+            if (building != null) {
+                selectedBuildingId = building.id;
+                activeOverlay = Overlay.BUILDING_PANEL;
+                performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
+                invalidate();
+                return;
+            }
+        }
         if (world.tapCell(row, col)) {
             performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
             rejectionMessageUntil = 0f;
@@ -1623,6 +1940,25 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
         if ((eventMask & DiplomacySystem.EVENT_COURIER_ARRIVED) != 0) {
             enqueueNotification(String.format(text(R.string.notify_courier_arrived), text(settlement.nameRes)));
         }
+    }
+
+    @Override
+    public void onGoodsReady(int buildingId, int resourceId, int amount) {
+        // The floating resource bubble is the calm, persistent notification for ready goods.
+    }
+
+    @Override
+    public void onGoodsDelivered(int workerId, int resourceId, int amount) {
+        audio.playGoodsDelivered(resourceId);
+        ResourceType resource = ResourceType.createAll()[resourceId];
+        enqueueNotification(String.format(text(R.string.notify_goods_delivered),
+                amount, text(resource.nameRes)));
+        saveKingdom();
+    }
+
+    @Override
+    public void onWorkerHired(int workerId) {
+        audio.playPopulationGrew();
     }
 
     private static int lighten(int color, float amount) {

@@ -22,6 +22,7 @@ final class KingdomSaveData {
     boolean[] techUnlocked;
     int[] resources;
     List<int[]> buildings;
+    List<int[]> workers;
     boolean[][] explored;
     int[] diplomaticRelations;
     int[] envoyTurns;

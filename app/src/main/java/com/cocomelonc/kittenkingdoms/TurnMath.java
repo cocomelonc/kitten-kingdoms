@@ -19,42 +19,20 @@ final class TurnMath {
     private TurnMath() {
     }
 
-    /**
-     * Net per-resource change for one turn: production minus upkeep, per completed building.
-     * A building whose upkeep the pre-turn stockpile cannot cover contributes neither its
-     * output nor its upkeep that turn (it idles rather than going negative or being destroyed).
-     */
-    static int[] computeTurnDelta(List<PlacedBuilding> buildings, BuildingType[] types,
-                                  boolean[] techUnlocked, TechNode[] techs, int[] currentResources) {
-        int[] delta = new int[ResourceType.COUNT];
-        for (PlacedBuilding building : buildings) {
-            if (!building.isComplete()) {
-                continue;
-            }
-            BuildingType type = types[building.typeId];
-            if (!canAffordUpkeep(type, currentResources)) {
-                continue;
-            }
-            for (int resource = 0; resource < ResourceType.COUNT; resource++) {
-                int output = type.outputPerTurn[resource];
-                if (output > 0) {
-                    int bonusPercent = totalYieldBonusPercent(techUnlocked, techs, resource);
-                    output += (output * bonusPercent) / 100;
-                    delta[resource] += output;
-                }
-                delta[resource] -= type.upkeepPerTurn[resource];
-            }
-        }
-        return delta;
-    }
-
-    private static boolean canAffordUpkeep(BuildingType type, int[] currentResources) {
+    static boolean canAffordUpkeep(BuildingType type, int[] currentResources) {
         for (int resource = 0; resource < ResourceType.COUNT; resource++) {
             if (type.upkeepPerTurn[resource] > 0 && currentResources[resource] < type.upkeepPerTurn[resource]) {
                 return false;
             }
         }
         return true;
+    }
+
+    static int computeYield(BuildingType type, boolean[] techUnlocked, TechNode[] techs,
+                            int resourceId) {
+        int output = type.outputPerTurn[resourceId];
+        int bonusPercent = totalYieldBonusPercent(techUnlocked, techs, resourceId);
+        return output + (output * bonusPercent) / 100;
     }
 
     private static int totalYieldBonusPercent(boolean[] techUnlocked, TechNode[] techs, int resourceId) {

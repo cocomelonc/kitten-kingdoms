@@ -37,6 +37,11 @@ final class AudioEngine {
         play(new float[]{523.25f, 659.25f, 783.99f, 987.77f}, 0.62f, 0.14f);
     }
 
+    void playGoodsDelivered(int resourceId) {
+        float base = 349.23f + resourceId * 22f;
+        play(new float[]{base, base * 1.2f}, 0.22f, 0.075f);
+    }
+
     private void play(float[] frequencies, float durationSeconds, float volume) {
         if (closed) {
             return;

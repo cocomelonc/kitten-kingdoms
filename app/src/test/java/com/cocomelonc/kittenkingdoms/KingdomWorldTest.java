@@ -23,6 +23,7 @@ public final class KingdomWorldTest {
         assertEquals(25, world.getResource(ResourceType.STONE));
         assertEquals(0, world.getTurn());
         assertEquals(1, world.getBuildings().size());
+        assertEquals(2, world.getWorkerCount());
         assertEquals(BuildingType.TOWN_HALL, world.getBuildings().get(0).typeId);
     }
 
@@ -113,31 +114,42 @@ public final class KingdomWorldTest {
     }
 
     @Test
-    public void completedBuildingProducesResourcesOnEndTurn() {
+    public void workerBuildsCollectsAndDeliversProduction() {
         KingdomWorld world = new KingdomWorld(null);
         world.beginNewKingdom();
         int row = WorldMap.START_ROW;
         int col = WorldMap.START_COL + 1;
         world.selectBuildingForPlacement(BuildingType.CATNIP_FARM);
         world.tapCell(row, col);
-        int buildTurns = BuildingType.createAll()[BuildingType.CATNIP_FARM].buildTurns;
+        PlacedBuilding farm = world.getBuildings().get(1);
 
-        advanceTurns(world, buildTurns);
-        int catnipAfterConstruction = world.getResource(ResourceType.CATNIP);
         world.endTurn();
+        assertFalse(farm.isComplete());
+        advanceTime(world, 5f);
+        assertTrue(farm.isComplete());
+        assertEquals(0, world.getResource(ResourceType.CATNIP));
+        world.endTurn();
+        assertEquals(4, farm.pendingAmount);
+        assertEquals(0, world.getResource(ResourceType.CATNIP));
+        advanceTime(world, 5f);
 
-        assertEquals(catnipAfterConstruction + 4, world.getResource(ResourceType.CATNIP));
+        assertEquals(4, world.getResource(ResourceType.CATNIP));
+        assertEquals(0, farm.pendingAmount);
     }
 
     @Test
     public void resourceStockpileNeverExceedsCap() {
         KingdomWorld world = new KingdomWorld(null);
         world.beginNewKingdom();
-        world.selectBuildingForPlacement(BuildingType.CATNIP_FARM);
-        world.tapCell(WorldMap.START_ROW, WorldMap.START_COL + 1);
+        world.placeBuildingForTest(BuildingType.CATNIP_FARM,
+                WorldMap.START_ROW, WorldMap.START_COL + 1, 0);
+        PlacedBuilding farm = world.getBuildings().get(1);
+        assertEquals(KingdomWorld.WORKFORCE_OK, world.assignWorker(farm.id));
+        advanceTime(world, 2f);
 
         for (int i = 0; i < 60; i++) {
             world.endTurn();
+            advanceTime(world, 2f);
             assertTrue(world.getResource(ResourceType.CATNIP) <= world.getResourceCap());
         }
     }
@@ -164,6 +176,9 @@ public final class KingdomWorldTest {
         world.placeBuildingForTest(BuildingType.WEAVERS_COTTAGE, row, col, 0);
         world.setResourceForTest(ResourceType.WOOD, 0);
         world.setResourceForTest(ResourceType.YARN, 0);
+        PlacedBuilding weaver = world.getBuildings().get(1);
+        assertEquals(KingdomWorld.WORKFORCE_OK, world.assignWorker(weaver.id));
+        advanceTime(world, 2f);
 
         world.endTurn();
 
@@ -172,9 +187,56 @@ public final class KingdomWorldTest {
         assertEquals(2, world.getBuildings().size());
     }
 
+    @Test
+    public void waitingConstructionStartsWhenAWorkerIsReleased() {
+        KingdomWorld world = new KingdomWorld(null);
+        world.beginNewKingdom();
+        world.setResourceForTest(ResourceType.WOOD, 100);
+        int row = WorldMap.START_ROW;
+        int col = WorldMap.START_COL;
+        int[][] sites = {{row, col + 1}, {row, col - 1}, {row + 1, col}};
+        for (int[] site : sites) {
+            world.selectBuildingForPlacement(BuildingType.CATNIP_FARM);
+            assertTrue(world.tapCell(site[0], site[1]));
+        }
+
+        advanceTime(world, 6f);
+        PlacedBuilding first = world.getBuildings().get(1);
+        PlacedBuilding third = world.getBuildings().get(3);
+        assertTrue(first.isComplete());
+        assertFalse(third.isComplete());
+
+        assertEquals(KingdomWorld.WORKFORCE_OK, world.unassignWorker(first.id));
+        advanceTime(world, 6f);
+        assertTrue(third.isComplete());
+    }
+
+    @Test
+    public void hiringUsesResidentsAndPaysTheAdvertisedCost() {
+        KingdomWorld world = new KingdomWorld(null);
+        world.beginNewKingdom();
+        world.setPopulationForTest(3);
+        world.setResourceForTest(ResourceType.FISH, 9);
+        world.setResourceForTest(ResourceType.CATNIP, 5);
+
+        assertEquals(KingdomWorld.WORKFORCE_OK, world.hireWorker());
+
+        assertEquals(3, world.getWorkerCount());
+        assertEquals(4, world.getResource(ResourceType.FISH));
+        assertEquals(3, world.getResource(ResourceType.CATNIP));
+        assertEquals(KingdomWorld.WORKFORCE_POPULATION_LIMIT, world.hireWorker());
+    }
+
     private static void advanceTurns(KingdomWorld world, int turns) {
         for (int i = 0; i < turns; i++) {
             world.endTurn();
+        }
+    }
+
+    private static void advanceTime(KingdomWorld world, float seconds) {
+        int steps = (int) Math.ceil(seconds / 0.1f);
+        for (int i = 0; i < steps; i++) {
+            world.update(0.1f);
         }
     }
 }

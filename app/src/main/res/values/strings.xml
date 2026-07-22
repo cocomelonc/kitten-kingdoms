@@ -18,6 +18,7 @@
     <string name="end_turn">End Turn</string>
     <string name="turn_label">Turn</string>
     <string name="population_label">Kittens</string>
+    <string name="workers_short">Workers</string>
     <string name="build_menu_title">Build</string>
     <string name="tech_tree_title">Research</string>
     <string name="world_map_button">World Map</string>
@@ -78,8 +79,8 @@
     <string name="help_explore_line1">Drag to look around, pinch to zoom, tap a tile to walk.</string>
     <string name="help_explore_line2">Survey every shore to reveal a lake or rocky area completely.</string>
     <string name="help_build_heading">Build</string>
-    <string name="help_build_line1">Open Build and choose what you can afford.</string>
-    <string name="help_build_line2">Some buildings need water, forest, or stone nearby.</string>
+    <string name="help_build_line1">Place a building, then a free worker walks over and builds it.</string>
+    <string name="help_build_line2">Tap a building to hire or assign kittens and collect its goods.</string>
     <string name="help_research_heading">Research</string>
     <string name="help_research_line1">Tech points build up every turn from your Town Hall.</string>
     <string name="help_research_line2">Pick a technology to unlock new buildings and yields.</string>
@@ -119,6 +120,38 @@
 
     <string name="notify_building_built">%1$s built!</string>
     <string name="notify_tech_unlocked">%1$s researched!</string>
+    <string name="notify_goods_delivered">+%1$d %2$s stored</string>
+    <string name="notify_worker_hired">A new kitten joined the workforce</string>
+    <string name="notify_worker_assigned">Kitten assigned</string>
+    <string name="notify_worker_released">Kitten is free for another job</string>
+
+    <string name="close_button">Close</string>
+    <string name="construction_site">Construction site</string>
+    <string name="construction_steps_left">Work stages left: %1$d</string>
+    <string name="waiting_for_builder">Waiting for a free builder</string>
+    <string name="kitten_number">Kitten #%1$d</string>
+    <string name="workforce_heading">Kitten workforce</string>
+    <string name="workforce_count">Working kittens: %1$d of %2$d</string>
+    <string name="hire_cost">Hire cost · Fish %1$d · Catnip %2$d</string>
+    <string name="hire_kitten">Hire Kitten</string>
+    <string name="production_heading">Workshop logistics</string>
+    <string name="production_per_turn">%1$d %2$s per turn</string>
+    <string name="goods_waiting">Ready to collect: %1$d</string>
+    <string name="no_goods_waiting">Next batch is not ready</string>
+    <string name="no_worker_assigned">No kitten assigned</string>
+    <string name="worker_assignment">Kitten #%1$d · %2$s</string>
+    <string name="assign_kitten">Assign Free Kitten</string>
+    <string name="release_kitten">Release Kitten</string>
+    <string name="passive_building">This building helps the whole kingdom.</string>
+    <string name="no_worker_needed">It does not need a permanent worker.</string>
+    <string name="worker_walking">walking to work</string>
+    <string name="worker_building">building</string>
+    <string name="worker_working">working</string>
+    <string name="worker_delivering">delivering goods</string>
+    <string name="worker_idle">idle</string>
+    <string name="workforce_no_idle">No free kitten. Release one or hire another.</string>
+    <string name="workforce_needs_resources">Need more Fish and Catnip to hire.</string>
+    <string name="workforce_population_limit">The whole population is already employed.</string>
 
     <string name="accessibility_game">Kitten Kingdoms. Drag to pan the map, pinch to zoom, tap to walk or to place a selected building.</string>
     <string name="accessibility_building_placed">Building placed</string>

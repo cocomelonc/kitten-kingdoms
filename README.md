@@ -10,7 +10,9 @@ settlement one gentle turn at a time. Walk a little kitten across a
 continuous 96x96-tile world, uncover the land as you go, and build a small
 kingdom on the ground you've discovered: gather six resources, put up eleven
 kinds of buildings, research a ten-technology tree, and build peaceful
-relationships with four neighbouring settlements. There are no ads,
+relationships with four neighbouring settlements. Visible worker kittens walk
+to construction sites, collect finished goods, and carry every batch back to
+the Town Hall or a Storage Barn. There are no ads,
 accounts, purchases, trackers, network calls, timers, lives, or game-over
 screens - a kingdom can only grow, never fail.
 
@@ -20,7 +22,7 @@ consistent on every Android device.
 
 ### Screenshots
 
-All screenshots below were recaptured from the `1.1.1-debug` APK on Android
+The screenshots below were captured from the Android build on Android
 16/API 36 after the unified terrain, animated animals, diplomacy, complete
 fog-of-war surveying, and new building-icon work.
 
@@ -59,15 +61,21 @@ The pause card uses the same EN/RU switch as every other screen:
   of a lake or stone outcrop has been surveyed, its inaccessible centre is
   revealed automatically. Exploring all walkable land is guaranteed to reveal
   every one of the world's 96x96 cells for every generated seed.
-- **Build**: once a tile is discovered, open *Build* and place any building
-  you can afford there instantly; no need to walk the kitten to the site
-  itself. Some buildings need to be adjacent to specific terrain (a Fishing
-  Dock needs nearby water, a Lumber Camp nearby forest, a Quarry a nearby
-  stone outcrop).
-- **Produce**: each building yields resources - Fish, Wood, Stone, Catnip,
-  Yarn, or Crystals - every turn, and some consume a little upkeep. A building
-  that can't afford its own upkeep simply idles for that turn; nothing is
-  ever destroyed.
+- **Build**: once a tile is discovered, open *Build* and place a construction
+  site. The closest free worker walks to an adjacent tile and builds it in
+  visible stages. If every kitten already has a job, the site waits instead of
+  completing invisibly. Fishing Docks, Lumber Camps, and Quarries still need
+  their matching water, forest, or stone terrain nearby.
+- **Produce and deliver**: production buildings prepare Fish, Wood, Stone,
+  Catnip, Yarn, or Crystals on *End Turn*, but the stockpile does not increase
+  immediately. A resource bubble appears above the building; its assigned
+  kitten collects the batch, walks to the closest completed Town Hall or
+  Storage Barn, and only then deposits it. Ready queues hold up to three
+  batches, and a workshop without a worker stays idle.
+- **Manage workers**: tap any building for its status card. Assign or release
+  a kitten at a workshop, and use the Town Hall to hire another resident for
+  5 Fish and 2 Catnip. Workers keep their assignment, finish deliveries, and
+  resume work automatically; coloured badges make them easy to distinguish.
 - **Grow**: population grows toward each building's housing capacity as long
   as there's enough Fish; if there isn't, growth just pauses - it never
   reverses.
@@ -80,11 +88,12 @@ showing the ten-node technology tree; pick a target node and once enough
   Send an envoy, dispatch a courier, or offer the resource each neighbour
   values. Strong relationships unlock permanent trade routes that exchange
   small resource bundles at the end of every turn.
-- **Notice**: a small banner announces when a building finishes construction
-  or a technology is researched.
+- **Notice**: persistent icons identify ready goods, missing workers, and
+  construction sites waiting for a builder. Small banners announce completed
+  buildings, deliveries, hiring, and research.
 - **End Turn**: the whole economy - production, upkeep, population, and
-  research - advances only when you tap *End Turn*. Exploration and building
-  placement happen anytime in between, independent of the turn clock.
+  research - advances when you tap *End Turn*. Walking, construction,
+  collection, and delivery continue smoothly between turns.
 
 Rabbits, hedgehogs, ducklings, and bees wander the discovered land -
 purely decorative background life with no AI and no interaction with the
@@ -101,9 +110,9 @@ economy, just so the kingdom doesn't feel empty.
   frame.
 - Zero runtime dependencies, matching the rest of the series: the kingdom
   save is a small hand-written versioned binary format over plain
-  `java.io` streams, not a database library. The format is versioned; version
-  2 saves migrate to version 3 with fresh diplomacy state rather than losing
-  the player's kingdom.
+  `java.io` streams, not a database library. The current version 4 stores
+  building queues, stable IDs, worker assignments, and carried cargo; version
+  2 and 3 kingdoms migrate automatically.
 - Terrain regenerates deterministically from a fixed seed and is never saved;
   only what the player has actually discovered or built is persisted.
 - English and Russian resources bundled in every APK/AAB.
@@ -144,7 +153,7 @@ The verification suite builds against API 36, runs strict lint with warnings
 as errors, checks APK signature/alignment and SDK declarations, and rejects
 native libraries. Unit tests exercise terrain connectivity and shoreline
 masks, the complete economy and technology tree, diplomacy travel and trade,
-and both current save round-trips and version 2 save migration.
+current save round-trips and legacy save migration.
 
 ### Build
 
@@ -187,8 +196,9 @@ reachable from its root, flood-fill the generated terrain for full
 connectivity from the kitten's starting tile, validate every generated water
 edge against the tilesheet's shoreline vocabulary, prove across 128 generated
 seeds that exhaustive land exploration uncovers every map cell, drive the turn-based economy
-through production, storage caps, population growth, tech-gated and
-terrain-gated building placement, and upkeep shortfalls, exercise envoy,
+through worker construction, queued production, physical delivery, hiring,
+assignment, storage caps, population growth, tech-gated and terrain-gated
+building placement, and upkeep shortfalls, exercise envoy,
 courier, gift, and trade-route rules, and round-trip and migrate the save
 format through byte streams.
 
@@ -199,15 +209,18 @@ format through byte streams.
 - Drag: pan the map. Pinch: zoom, from 0.6x to 1.8x.
 - Tap a tile with no building selected: the kitten walks there.
 - Tap *Build*, choose a building, then tap any discovered, eligible tile to
-  place it.
+  place its construction site. A free kitten walks there and builds it.
+- Tap a building to inspect its queue and worker. Production buildings let
+  you assign or release a kitten; the Town Hall lets you hire residents.
 - Tap *Research* to open the technology screen, then an available
   (non-greyed) node to set it as the active research target; Back returns to
   the kingdom.
 - Tap *World Map* to select a neighbouring settlement, send an envoy or
   courier, offer a gift, and establish a trade route once the relationship is
   warm enough. End turns to advance travellers and route exchanges.
-- Tap *End Turn* to resolve production, upkeep, population growth, and
-  research for the whole kingdom.
+- Tap *End Turn* to prepare staffed production batches and resolve upkeep,
+  population growth, research, diplomacy, and trade. Let workers deliver the
+  batches to storage before spending them.
 - Top-right pause button or Android Back: pause (or cancel a build selection
   first, if one is open). Pause also offers a *Main Menu* button.
 - `EN / RU`: switch language on the title or pause screen.
@@ -222,13 +235,15 @@ app/src/main/java/com/cocomelonc/kittenkingdoms/
   TechTreeView.java       the ten-node technology DAG, rendered full screen
   HelpActivity.java       hosts the static "How to Play" screen
   HelpView.java           four short Explore/Build/Research/Diplomacy sections
-  KingdomWorld.java       turn rules, kitten pathing, diplomacy, save/load glue
+  KingdomWorld.java       turn rules, worker logistics, diplomacy, save/load glue
+  WorkerKitten.java       visible worker state, cargo, assignment, and movement
+  GridPathfinder.java     deterministic routes to worksites and storage depots
   WorldMap.java           96x96 deterministic terrain, fog of war, occupancy
   TerrainType.java        data-driven terrain kinds (grass, forest, water, ...)
   ResourceType.java       data-driven stockpiled resources
   BuildingType.java       data-driven building costs, output, and gates
   TechNode.java           data-driven technology tree (a DAG, not a line)
-  PlacedBuilding.java     mutable building-instance placement state
+  PlacedBuilding.java     stable building ID, construction, and ready-goods queue
   WildlifeCritter.java    decorative background creature: no AI, just wanders
   Settlement.java         the four neighbouring settlement definitions
   DiplomacySystem.java    relationship, travel, gifts, and trade-route rules
@@ -282,7 +297,10 @@ Kitten Kingdoms - маленькая спокойная Android-игра о то
 торговые пути. Здесь нет рекламы, регистрации, покупок, аналитики, сети,
 таймеров, жизней и экрана проигрыша - королевство может только расти. По
 открытой земле бродят кролики, ежи, утята и пчёлы - чисто декоративные, без
-логики и влияния на экономику.
+логики и влияния на экономику. Рабочие котята сами идут на стройплощадки,
+забирают готовые партии из причала, фермы, лесопилки, каменоломни, мастерской
+и шахты, а затем относят их в ратушу или ближайший амбар. Работников можно
+нанимать в ратуше, назначать на здания и освобождать для новой работы.
 
 Игра запускается на английском; язык можно в любой момент переключить на
 русский кнопкой `EN / RU`. Один и тот же встроенный шрифт Nunito используется

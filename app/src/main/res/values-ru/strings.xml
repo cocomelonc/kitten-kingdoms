@@ -18,6 +18,7 @@
     <string name="end_turn">Завершить ход</string>
     <string name="turn_label">Ход</string>
     <string name="population_label">Котята</string>
+    <string name="workers_short">Работники</string>
     <string name="build_menu_title">Строить</string>
     <string name="tech_tree_title">Исследования</string>
     <string name="world_map_button">Карта мира</string>
@@ -82,8 +83,8 @@
     <string name="help_explore_line1">Веди пальцем, чтобы осмотреться, сжимай для масштаба.</string>
     <string name="help_explore_line2">Исследуй все берега, чтобы полностью открыть озеро или скалы.</string>
     <string name="help_build_heading">Строй</string>
-    <string name="help_build_line1">Открой «Строить» и выбери, что по карману.</string>
-    <string name="help_build_line2">Некоторым зданиям нужна вода, лес или камень рядом.</string>
+    <string name="help_build_line1">Размести здание, и свободный работник сам придёт его строить.</string>
+    <string name="help_build_line2">Коснись здания, чтобы нанять или назначить котят и забрать товары.</string>
     <string name="help_research_heading">Исследуй науку</string>
     <string name="help_research_line1">Очки науки копятся каждый ход от Ратуши.</string>
     <string name="help_research_line2">Выбери технологию - откроет здания и урожай.</string>
@@ -123,6 +124,38 @@
 
     <string name="notify_building_built">Построено: %1$s</string>
     <string name="notify_tech_unlocked">Изучено: %1$s</string>
+    <string name="notify_goods_delivered">На складе: +%1$d %2$s</string>
+    <string name="notify_worker_hired">Новый котёнок вышел на работу</string>
+    <string name="notify_worker_assigned">Котёнок назначен</string>
+    <string name="notify_worker_released">Котёнок свободен для другой работы</string>
+
+    <string name="close_button">Закрыть</string>
+    <string name="construction_site">Строительная площадка</string>
+    <string name="construction_steps_left">Осталось этапов: %1$d</string>
+    <string name="waiting_for_builder">Ждёт свободного строителя</string>
+    <string name="kitten_number">Котёнок №%1$d</string>
+    <string name="workforce_heading">Работники королевства</string>
+    <string name="workforce_count">Работают: %1$d из %2$d котят</string>
+    <string name="hire_cost">Цена найма · рыба %1$d · мята %2$d</string>
+    <string name="hire_kitten">Нанять котёнка</string>
+    <string name="production_heading">Работа и доставка</string>
+    <string name="production_per_turn">%1$d %2$s за ход</string>
+    <string name="goods_waiting">Готово к сбору: %1$d</string>
+    <string name="no_goods_waiting">Новая партия ещё не готова</string>
+    <string name="no_worker_assigned">Работник не назначен</string>
+    <string name="worker_assignment">Котёнок №%1$d · %2$s</string>
+    <string name="assign_kitten">Назначить котёнка</string>
+    <string name="release_kitten">Освободить котёнка</string>
+    <string name="passive_building">Это здание помогает всему королевству.</string>
+    <string name="no_worker_needed">Постоянный работник ему не нужен.</string>
+    <string name="worker_walking">идёт на работу</string>
+    <string name="worker_building">строит</string>
+    <string name="worker_working">работает</string>
+    <string name="worker_delivering">несёт товары</string>
+    <string name="worker_idle">отдыхает</string>
+    <string name="workforce_no_idle">Нет свободных котят. Освободи работника или найми нового.</string>
+    <string name="workforce_needs_resources">Для найма нужно больше рыбы и мяты.</string>
+    <string name="workforce_population_limit">Все жители уже работают.</string>
 
     <string name="accessibility_game">Королевство котят. Веди пальцем, чтобы двигать карту, сжимай для масштаба, касайся, чтобы идти или разместить выбранное здание.</string>
     <string name="accessibility_building_placed">Здание построено</string>

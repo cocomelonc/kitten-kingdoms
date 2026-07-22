@@ -6,14 +6,19 @@
  */
 package com.cocomelonc.kittenkingdoms;
 
-/** A building instance placed on the world map; mutable construction/placement state only. */
+/** A stable building instance, including its construction and undelivered production state. */
 final class PlacedBuilding {
+    final int id;
     final int typeId;
     final int row;
     final int col;
     int turnsRemaining;
+    int pendingResourceId = ResourceType.NONE;
+    int pendingAmount;
+    float constructionTimer;
 
-    PlacedBuilding(int typeId, int row, int col, int turnsRemaining) {
+    PlacedBuilding(int id, int typeId, int row, int col, int turnsRemaining) {
+        this.id = id;
         this.typeId = typeId;
         this.row = row;
         this.col = col;
@@ -22,5 +27,9 @@ final class PlacedBuilding {
 
     boolean isComplete() {
         return turnsRemaining <= 0;
+    }
+
+    boolean hasReadyGoods() {
+        return pendingResourceId != ResourceType.NONE && pendingAmount > 0;
     }
 }
