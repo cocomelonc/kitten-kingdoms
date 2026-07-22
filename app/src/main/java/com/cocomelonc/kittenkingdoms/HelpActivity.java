@@ -12,7 +12,7 @@ import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
 
-/** A minimal, static "how to play" screen reachable from the main menu. */
+/** Hosts the swipeable, offline comic guide reachable from the main menu. */
 public final class HelpActivity extends Activity implements HelpView.Listener {
     static final String EXTRA_LANGUAGE = "language";
 

@@ -44,7 +44,11 @@ trade routes continue exchanging resources with the home kingdom.
 
 Build Menu is a modal card over the world; Research and How to Play are their
 own full screens (real Android Activities, so the system Back gesture returns
-you to the kingdom exactly as it left it):
+you to the kingdom exactly as it left it). How to Play is an eight-page,
+swipeable comic made with the game's real tiles, buildings, kittens, resource
+icons, and EN/RU text. It explains the recommended opening, construction,
+delivery, population growth, hiring, recovery when every worker is occupied,
+and the later expansion path:
 
 ![Build menu with buildable, locked, and unaffordable buildings](art/runtime-build-menu.png)
 ![Research screen showing the ten-node technology DAG](art/runtime-tech-tree.png)
@@ -205,7 +209,8 @@ format through byte streams.
 ### Controls
 
 - Main menu: *Continue* (once a kingdom exists), *New Kingdom* (confirms
-  before replacing a saved kingdom), and *How to Play*.
+  before replacing a saved kingdom), and *How to Play*. The guide can be
+  browsed with horizontal swipes or its *Back* / *Next* buttons.
 - Drag: pan the map. Pinch: zoom, from 0.6x to 1.8x.
 - Tap a tile with no building selected: the kitten walks there.
 - Tap *Build*, choose a building, then tap any discovered, eligible tile to
@@ -233,8 +238,8 @@ app/src/main/java/com/cocomelonc/kittenkingdoms/
   KittenKingdomsView.java camera, tile culling, HUD, Build and World Map overlays, input
   TechTreeActivity.java   hosts the Research screen, returns the chosen tech via Intent
   TechTreeView.java       the ten-node technology DAG, rendered full screen
-  HelpActivity.java       hosts the static "How to Play" screen
-  HelpView.java           four short Explore/Build/Research/Diplomacy sections
+  HelpActivity.java       hosts the swipeable "How to Play" comic
+  HelpView.java           eight illustrated EN/RU onboarding and strategy pages
   KingdomWorld.java       turn rules, worker logistics, diplomacy, save/load glue
   WorkerKitten.java       visible worker state, cargo, assignment, and movement
   GridPathfinder.java     deterministic routes to worksites and storage depots
