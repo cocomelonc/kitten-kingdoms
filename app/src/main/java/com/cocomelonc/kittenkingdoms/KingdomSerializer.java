@@ -19,7 +19,8 @@ import java.util.ArrayList;
  * so the caller can fall back to a fresh kingdom rather than crash.
  */
 final class KingdomSerializer {
-    private static final int SAVE_VERSION = 5;
+    private static final int SAVE_VERSION = 6;
+    private static final int DIPLOMATIC_WORKER_SAVE_VERSION = 5;
     private static final int WORKER_SAVE_VERSION = 4;
     private static final int DIPLOMACY_SAVE_VERSION = 3;
     private static final int LEGACY_SAVE_VERSION = 2;
@@ -57,7 +58,8 @@ final class KingdomSerializer {
     static KingdomSaveData read(InputStream rawIn) throws IOException {
         DataInputStream in = new DataInputStream(rawIn);
         int version = in.readInt();
-        if (version != SAVE_VERSION && version != WORKER_SAVE_VERSION
+        if (version != SAVE_VERSION && version != DIPLOMATIC_WORKER_SAVE_VERSION
+                && version != WORKER_SAVE_VERSION
                 && version != DIPLOMACY_SAVE_VERSION && version != LEGACY_SAVE_VERSION) {
             throw new IOException("Unsupported save version: " + version);
         }
@@ -94,14 +96,14 @@ final class KingdomSerializer {
         data.explored = readExploredBits(in);
         if (version >= 3) {
             readDiplomacy(in, data);
-            if (version < SAVE_VERSION) {
+            if (version < DIPLOMATIC_WORKER_SAVE_VERSION) {
                 migrateLegacyDiplomaticTrips(data);
             }
         }
         if (version >= WORKER_SAVE_VERSION) {
-            readWorkers(in, data);
+            readWorkers(in, data, version);
         }
-        if (version >= SAVE_VERSION) {
+        if (version >= DIPLOMATIC_WORKER_SAVE_VERSION) {
             readDiplomaticWorkers(in, data);
         }
         return data;
@@ -147,18 +149,25 @@ final class KingdomSerializer {
             for (int field = 0; field < 6; field++) {
                 out.writeInt(valueAt(worker, field));
             }
+            out.writeInt(valueAtOr(worker, 6, BuildingType.NONE));
+            out.writeInt(valueAt(worker, 7));
         }
     }
 
-    private static void readWorkers(DataInputStream in, KingdomSaveData data) throws IOException {
+    private static void readWorkers(DataInputStream in, KingdomSaveData data, int version)
+            throws IOException {
         int count = in.readInt();
         if (count < 0 || count > WorldMap.SIZE * WorldMap.SIZE) {
             throw new IOException("Implausible worker count: " + count);
         }
         data.workers = new ArrayList<>(count);
+        int fields = version >= SAVE_VERSION ? 8 : 6;
         for (int i = 0; i < count; i++) {
-            data.workers.add(new int[]{in.readInt(), in.readInt(), in.readInt(), in.readInt(),
-                    in.readInt(), in.readInt()});
+            int[] worker = new int[fields];
+            for (int field = 0; field < fields; field++) {
+                worker[field] = in.readInt();
+            }
+            data.workers.add(worker);
         }
     }
 

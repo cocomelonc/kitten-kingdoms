@@ -218,6 +218,7 @@
     <string name="production_heading">Workshop logistics</string>
     <string name="production_per_turn">%1$d %2$s per turn</string>
     <string name="goods_waiting">Ready to collect: %1$d</string>
+    <string name="goods_waiting_storage_full">Storage full · queued: %1$d</string>
     <string name="no_goods_waiting">Next batch is not ready</string>
     <string name="no_worker_assigned">No kitten assigned</string>
     <string name="worker_assignment">Kitten #%1$d · %2$s</string>
@@ -228,6 +229,7 @@
     <string name="worker_walking">walking to work</string>
     <string name="worker_building">building</string>
     <string name="worker_working">working</string>
+    <string name="worker_waiting_storage">waiting for storage space</string>
     <string name="worker_delivering">delivering goods</string>
     <string name="worker_idle">idle</string>
     <string name="worker_travelling">travelling on the world map</string>

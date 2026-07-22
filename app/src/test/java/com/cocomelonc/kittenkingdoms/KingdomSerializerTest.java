@@ -38,7 +38,8 @@ public final class KingdomSerializerTest {
         original.buildings.add(new int[]{1, BuildingType.CATNIP_FARM, 48, 49, 1,
                 ResourceType.CATNIP, 4});
         original.workers = new ArrayList<>();
-        original.workers.add(new int[]{0, 47, 48, 1, ResourceType.NONE, 0});
+        original.workers.add(new int[]{0, 47, 48, 1, ResourceType.NONE, 0,
+                BuildingType.NONE, 0});
         original.explored = new boolean[WorldMap.SIZE][WorldMap.SIZE];
         original.explored[48][48] = true;
         original.explored[10][20] = true;
@@ -212,5 +213,71 @@ public final class KingdomSerializerTest {
         }
         assertEquals(30, world.getRelation(Settlement.RIVERWHISKER));
         assertEquals(2, world.getIdleWorkerCount());
+    }
+
+    @Test
+    public void versionFiveStuckCargoIsRecoveredAndWorkerBecomesReusable() throws IOException {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        DataOutputStream out = new DataOutputStream(bytes);
+        out.writeInt(5);
+        out.writeInt(12);
+        out.writeInt(WorldMap.START_ROW);
+        out.writeInt(WorldMap.START_COL);
+        out.writeInt(2);
+        out.writeInt(0);
+        out.writeInt(TechNode.NONE);
+        out.writeInt(0);
+        for (int resource = 0; resource < ResourceType.COUNT; resource++) {
+            out.writeInt(resource == ResourceType.CATNIP ? 80 : 0);
+        }
+        out.writeInt(2);
+        writeVersionFiveBuilding(out, 0, BuildingType.TOWN_HALL,
+                WorldMap.START_ROW, WorldMap.START_COL);
+        writeVersionFiveBuilding(out, 1, BuildingType.CATNIP_FARM,
+                WorldMap.START_ROW, WorldMap.START_COL + 1);
+        out.write(new byte[(WorldMap.SIZE * WorldMap.SIZE + 7) / 8]);
+        out.writeInt(Settlement.COUNT);
+        for (int settlement = 0; settlement < Settlement.COUNT; settlement++) {
+            out.writeInt(10);
+            out.writeInt(0);
+            out.writeInt(0);
+            out.writeBoolean(false);
+        }
+        out.writeInt(1);
+        out.writeInt(7);
+        out.writeInt(WorldMap.START_ROW - 1);
+        out.writeInt(WorldMap.START_COL);
+        out.writeInt(BuildingType.NONE);
+        out.writeInt(ResourceType.CATNIP);
+        out.writeInt(4);
+        for (int settlement = 0; settlement < Settlement.COUNT; settlement++) {
+            out.writeInt(BuildingType.NONE);
+            out.writeInt(BuildingType.NONE);
+        }
+
+        KingdomSaveData migrated = KingdomSerializer.read(
+                new ByteArrayInputStream(bytes.toByteArray()));
+        KingdomWorld world = new KingdomWorld(null);
+        world.continueKingdom(migrated);
+        for (int step = 0; step < 20; step++) {
+            world.update(0.1f);
+        }
+
+        PlacedBuilding farm = world.getBuilding(1);
+        assertEquals(4, farm.pendingAmount);
+        assertEquals(1, world.getIdleWorkerCount());
+        assertEquals(KingdomWorld.WORKFORCE_OK, world.assignWorker(farm.id));
+        assertEquals(7, world.getAssignedWorker(farm.id).id);
+    }
+
+    private static void writeVersionFiveBuilding(DataOutputStream out, int id, int type,
+            int row, int col) throws IOException {
+        out.writeInt(id);
+        out.writeInt(type);
+        out.writeInt(row);
+        out.writeInt(col);
+        out.writeInt(0);
+        out.writeInt(ResourceType.NONE);
+        out.writeInt(0);
     }
 }

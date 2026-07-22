@@ -31,6 +31,8 @@ final class WorkerKitten {
     int taskBuildingId = BuildingType.NONE;
     int carriedResourceId = ResourceType.NONE;
     int carriedAmount;
+    int cargoSourceBuildingId = BuildingType.NONE;
+    boolean releaseAfterDelivery;
     float actionTimer;
 
     WorkerKitten(int id, int row, int col) {

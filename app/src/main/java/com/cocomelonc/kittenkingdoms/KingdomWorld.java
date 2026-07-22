@@ -552,7 +552,8 @@ final class KingdomWorld {
             releaseWorker(worker);
             return;
         }
-        if (building.hasReadyGoods()) {
+        if (building.hasReadyGoods()
+                && availableStorageRoom(building.pendingResourceId) > 0) {
             worker.state = WorkerKitten.COLLECTING;
             worker.actionTimer = 0f;
         }
@@ -568,39 +569,53 @@ final class KingdomWorld {
         if (worker.actionTimer < COLLECTION_SECONDS || !building.hasReadyGoods()) {
             return;
         }
+        int amount = Math.min(building.pendingAmount,
+                availableStorageRoom(building.pendingResourceId));
+        if (amount <= 0) {
+            worker.state = WorkerKitten.WORKING;
+            worker.actionTimer = 0f;
+            return;
+        }
         worker.carriedResourceId = building.pendingResourceId;
-        worker.carriedAmount = building.pendingAmount;
-        building.pendingResourceId = ResourceType.NONE;
-        building.pendingAmount = 0;
+        worker.carriedAmount = amount;
+        worker.cargoSourceBuildingId = building.id;
+        worker.releaseAfterDelivery = false;
+        building.pendingAmount -= amount;
+        if (building.pendingAmount == 0) {
+            building.pendingResourceId = ResourceType.NONE;
+        }
         worker.actionTimer = 0f;
         routeWorkerToStorage(worker);
     }
 
     private void depositGoods(WorkerKitten worker) {
         if (worker.carriedResourceId == ResourceType.NONE || worker.carriedAmount <= 0) {
-            returnWorkerToAssignment(worker);
+            finishCargoJob(worker);
             return;
         }
-        int room = Math.max(0, getResourceCap() - resources[worker.carriedResourceId]);
+        int room = availableStorageRoom(worker.carriedResourceId);
         int delivered = Math.min(room, worker.carriedAmount);
-        if (delivered <= 0) {
-            return;
+        if (delivered > 0) {
+            resources[worker.carriedResourceId] += delivered;
+            worker.carriedAmount -= delivered;
+            if (listener != null) {
+                listener.onGoodsDelivered(worker.id, worker.carriedResourceId, delivered);
+            }
         }
-        resources[worker.carriedResourceId] += delivered;
-        worker.carriedAmount -= delivered;
-        if (listener != null) {
-            listener.onGoodsDelivered(worker.id, worker.carriedResourceId, delivered);
+        if (worker.carriedAmount > 0) {
+            returnCargoToSource(worker);
         }
-        if (worker.carriedAmount == 0) {
-            worker.carriedResourceId = ResourceType.NONE;
-            returnWorkerToAssignment(worker);
-        }
+        finishCargoJob(worker);
     }
 
     private void returnWorkerToAssignment(WorkerKitten worker) {
+        if (worker.releaseAfterDelivery || worker.assignedBuildingId == BuildingType.NONE) {
+            makeWorkerIdle(worker);
+            return;
+        }
         PlacedBuilding assigned = findBuilding(worker.assignedBuildingId);
         if (assigned == null || !assigned.isComplete()) {
-            releaseWorker(worker);
+            makeWorkerIdle(worker);
             return;
         }
         worker.state = WorkerKitten.TO_WORK;
@@ -608,19 +623,94 @@ final class KingdomWorld {
         worker.path.addAll(GridPathfinder.besideCell(map, worker.row, worker.col,
                 assigned.row, assigned.col));
         if (worker.path.isEmpty() && !isBeside(worker.row, worker.col, assigned.row, assigned.col)) {
-            releaseWorker(worker);
+            makeWorkerIdle(worker);
         }
     }
 
     private void routeWorkerToStorage(WorkerKitten worker) {
         PlacedBuilding depot = findNearestDepot(worker.row, worker.col);
         if (depot == null) {
-            releaseWorker(worker);
+            returnCargoToSource(worker);
+            finishCargoJob(worker);
             return;
         }
         worker.state = WorkerKitten.TO_STORAGE;
         worker.path.clear();
         worker.path.addAll(GridPathfinder.besideCell(map, worker.row, worker.col, depot.row, depot.col));
+    }
+
+    private int availableStorageRoom(int resourceId) {
+        if (resourceId < 0 || resourceId >= ResourceType.COUNT) {
+            return 0;
+        }
+        return Math.max(0, getResourceCap() - resources[resourceId]);
+    }
+
+    private void returnCargoToSource(WorkerKitten worker) {
+        if (worker.carriedResourceId < 0 || worker.carriedResourceId >= ResourceType.COUNT
+                || worker.carriedAmount <= 0) {
+            return;
+        }
+        PlacedBuilding source = findCompatibleCargoSource(
+                worker.cargoSourceBuildingId, worker.carriedResourceId);
+        if (source == null) {
+            source = findCompatibleCargoSource(
+                    worker.assignedBuildingId, worker.carriedResourceId);
+        }
+        if (source == null) {
+            for (PlacedBuilding building : buildings) {
+                if (building.isComplete()
+                        && outputResourceId(building.typeId) == worker.carriedResourceId
+                        && (building.pendingResourceId == ResourceType.NONE
+                        || building.pendingResourceId == worker.carriedResourceId)) {
+                    source = building;
+                    break;
+                }
+            }
+        }
+        if (source != null) {
+            source.pendingResourceId = worker.carriedResourceId;
+            source.pendingAmount += worker.carriedAmount;
+        } else {
+            // Recovery for an old/corrupt save without the original workshop: never lose cargo
+            // and never leave a worker permanently stuck looking for a depot.
+            resources[worker.carriedResourceId] += worker.carriedAmount;
+        }
+        worker.carriedAmount = 0;
+    }
+
+    private PlacedBuilding findCompatibleCargoSource(int buildingId, int resourceId) {
+        PlacedBuilding building = findBuilding(buildingId);
+        if (building == null || !building.isComplete()
+                || outputResourceId(building.typeId) != resourceId) {
+            return null;
+        }
+        return building.pendingResourceId == ResourceType.NONE
+                || building.pendingResourceId == resourceId ? building : null;
+    }
+
+    private void finishCargoJob(WorkerKitten worker) {
+        worker.carriedResourceId = ResourceType.NONE;
+        worker.carriedAmount = 0;
+        worker.cargoSourceBuildingId = BuildingType.NONE;
+        if (worker.releaseAfterDelivery || worker.assignedBuildingId == BuildingType.NONE) {
+            makeWorkerIdle(worker);
+        } else {
+            worker.releaseAfterDelivery = false;
+            returnWorkerToAssignment(worker);
+        }
+    }
+
+    private void makeWorkerIdle(WorkerKitten worker) {
+        worker.assignedBuildingId = BuildingType.NONE;
+        worker.taskBuildingId = BuildingType.NONE;
+        worker.carriedResourceId = ResourceType.NONE;
+        worker.carriedAmount = 0;
+        worker.cargoSourceBuildingId = BuildingType.NONE;
+        worker.releaseAfterDelivery = false;
+        worker.actionTimer = 0f;
+        worker.path.clear();
+        worker.state = WorkerKitten.IDLE;
     }
 
     private PlacedBuilding findNearestDepot(int fromRow, int fromCol) {
@@ -808,7 +898,8 @@ final class KingdomWorld {
         data.workers = new ArrayList<>(workers.size());
         for (WorkerKitten worker : workers) {
             data.workers.add(new int[]{worker.id, worker.row, worker.col, worker.assignedBuildingId,
-                    worker.carriedResourceId, worker.carriedAmount});
+                    worker.carriedResourceId, worker.carriedAmount, worker.cargoSourceBuildingId,
+                    worker.releaseAfterDelivery ? 1 : 0});
         }
         data.explored = map.exploredSnapshot();
         data.diplomaticRelations = diplomacy.relationsSnapshot();
@@ -896,14 +987,29 @@ final class KingdomWorld {
                 WorkerKitten worker = new WorkerKitten(workerId, workerRow, workerCol);
                 worker.assignedBuildingId = findBuilding(entry[3]) == null
                         ? BuildingType.NONE : entry[3];
+                worker.cargoSourceBuildingId = entry.length >= 8
+                        && findBuilding(entry[6]) != null ? entry[6] : BuildingType.NONE;
+                worker.releaseAfterDelivery = entry.length >= 8 && entry[7] != 0;
+                if (worker.releaseAfterDelivery) {
+                    worker.assignedBuildingId = BuildingType.NONE;
+                }
                 if (entry[4] >= 0 && entry[4] < ResourceType.COUNT && entry[5] > 0) {
                     worker.carriedResourceId = entry[4];
                     worker.carriedAmount = entry[5];
+                    if (worker.cargoSourceBuildingId == BuildingType.NONE) {
+                        PlacedBuilding legacySource = findCompatibleCargoSource(
+                                worker.assignedBuildingId, worker.carriedResourceId);
+                        if (legacySource != null) {
+                            worker.cargoSourceBuildingId = legacySource.id;
+                        }
+                    }
                     workers.add(worker);
                     routeWorkerToStorage(worker);
                 } else {
                     workers.add(worker);
-                    if (worker.assignedBuildingId != BuildingType.NONE) {
+                    if (worker.releaseAfterDelivery) {
+                        makeWorkerIdle(worker);
+                    } else if (worker.assignedBuildingId != BuildingType.NONE) {
                         returnWorkerToAssignment(worker);
                     }
                 }
@@ -1008,10 +1114,10 @@ final class KingdomWorld {
         worker.taskBuildingId = BuildingType.NONE;
         worker.actionTimer = 0f;
         if (worker.carriedAmount > 0) {
+            worker.releaseAfterDelivery = true;
             routeWorkerToStorage(worker);
         } else {
-            worker.path.clear();
-            worker.state = WorkerKitten.IDLE;
+            makeWorkerIdle(worker);
         }
     }
 
@@ -1174,6 +1280,10 @@ final class KingdomWorld {
         return resources[resourceId];
     }
 
+    boolean isStorageFullForResource(int resourceId) {
+        return availableStorageRoom(resourceId) == 0;
+    }
+
     int[] getResourceSnapshot() {
         return resources.clone();
     }
@@ -1331,6 +1441,8 @@ final class KingdomWorld {
         worker.taskBuildingId = BuildingType.NONE;
         worker.carriedResourceId = ResourceType.NONE;
         worker.carriedAmount = 0;
+        worker.cargoSourceBuildingId = BuildingType.NONE;
+        worker.releaseAfterDelivery = false;
         worker.actionTimer = 0f;
         worker.state = WorkerKitten.DIPLOMACY;
     }
@@ -1353,7 +1465,7 @@ final class KingdomWorld {
         worker.col = home[1];
         worker.visualRow = home[0];
         worker.visualCol = home[1];
-        worker.state = WorkerKitten.IDLE;
+        makeWorkerIdle(worker);
         dispatchWaitingConstruction();
     }
 

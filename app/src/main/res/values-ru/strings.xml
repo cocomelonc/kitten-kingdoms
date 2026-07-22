@@ -218,6 +218,7 @@
     <string name="production_heading">Работа и доставка</string>
     <string name="production_per_turn">%1$d %2$s за ход</string>
     <string name="goods_waiting">Готово к сбору: %1$d</string>
+    <string name="goods_waiting_storage_full">Склад заполнен · в очереди: %1$d</string>
     <string name="no_goods_waiting">Новая партия ещё не готова</string>
     <string name="no_worker_assigned">Работник не назначен</string>
     <string name="worker_assignment">Котёнок №%1$d · %2$s</string>
@@ -228,6 +229,7 @@
     <string name="worker_walking">идёт на работу</string>
     <string name="worker_building">строит</string>
     <string name="worker_working">работает</string>
+    <string name="worker_waiting_storage">ждёт места на складе</string>
     <string name="worker_delivering">несёт товары</string>
     <string name="worker_idle">отдыхает</string>
     <string name="worker_travelling">путешествует по карте мира</string>

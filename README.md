@@ -197,10 +197,10 @@ economy, just so the kingdom doesn't feel empty.
   frame.
 - Zero runtime dependencies, matching the rest of the series: the kingdom
   save is a small hand-written versioned binary format over plain
-  `java.io` streams, not a database library. The current version 5 stores
+  `java.io` streams, not a database library. The current version 6 stores
   building queues, stable IDs, worker assignments, carried cargo, and the
-  exact workers reserved by diplomatic missions; version 2, 3, and 4 kingdoms
-  migrate automatically.
+  exact workers reserved by diplomatic missions; kingdoms from versions 2
+  through 5 migrate automatically.
 - Terrain regenerates deterministically from a fixed seed and is never saved;
   only what the player has actually discovered or built is persisted.
 - English and Russian resources bundled in every APK/AAB.

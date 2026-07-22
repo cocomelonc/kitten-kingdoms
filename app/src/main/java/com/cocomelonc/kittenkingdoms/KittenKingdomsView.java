@@ -1177,9 +1177,16 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
             drawFittedText(canvas, String.format(text(R.string.production_per_turn), output,
                             text(ResourceType.createAll()[outputResource].nameRes)), infoX + 30f, 280f,
                     20f, 430f, 0xFF74694F, false);
-            String ready = building.hasReadyGoods()
-                    ? String.format(text(R.string.goods_waiting), building.pendingAmount)
-                    : text(R.string.no_goods_waiting);
+            String ready;
+            if (building.hasReadyGoods()
+                    && world.isStorageFullForResource(building.pendingResourceId)) {
+                ready = String.format(text(R.string.goods_waiting_storage_full),
+                        building.pendingAmount);
+            } else if (building.hasReadyGoods()) {
+                ready = String.format(text(R.string.goods_waiting), building.pendingAmount);
+            } else {
+                ready = text(R.string.no_goods_waiting);
+            }
             drawFittedText(canvas, ready, infoX, 326f, 20f, 600f,
                     building.hasReadyGoods() ? 0xFF557A59 : 0xFF908777, true);
             WorkerKitten assigned = world.getAssignedWorker(building.id);
@@ -1218,6 +1225,12 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
             case WorkerKitten.CONSTRUCTING:
                 return text(R.string.worker_building);
             case WorkerKitten.WORKING:
+                PlacedBuilding workplace = world.getBuilding(worker.assignedBuildingId);
+                if (workplace != null && workplace.hasReadyGoods()
+                        && world.isStorageFullForResource(workplace.pendingResourceId)) {
+                    return text(R.string.worker_waiting_storage);
+                }
+                return text(R.string.worker_working);
             case WorkerKitten.COLLECTING:
                 return text(R.string.worker_working);
             case WorkerKitten.TO_STORAGE:

@@ -155,6 +155,73 @@ public final class KingdomWorldTest {
     }
 
     @Test
+    public void fullStorageLeavesGoodsAtWorkshopAndWorkerCanBeReleased() {
+        KingdomWorld world = new KingdomWorld(null);
+        world.beginNewKingdom();
+        world.placeBuildingForTest(BuildingType.CATNIP_FARM,
+                WorldMap.START_ROW, WorldMap.START_COL + 1, 0);
+        PlacedBuilding farm = world.getBuildings().get(1);
+        assertEquals(KingdomWorld.WORKFORCE_OK, world.assignWorker(farm.id));
+        WorkerKitten worker = world.getAssignedWorker(farm.id);
+        advanceTime(world, 1f);
+        world.setResourceForTest(ResourceType.CATNIP, world.getResourceCap());
+
+        world.endTurn();
+        advanceTime(world, 5f);
+
+        assertEquals(4, farm.pendingAmount);
+        assertEquals(0, worker.carriedAmount);
+        assertEquals(WorkerKitten.WORKING, worker.state);
+        assertEquals(KingdomWorld.WORKFORCE_OK, world.unassignWorker(farm.id));
+        assertEquals(WorkerKitten.IDLE, worker.state);
+    }
+
+    @Test
+    public void releasedWorkerReturnsOverflowAndCanBeAssignedAgain() {
+        KingdomWorld world = new KingdomWorld(null);
+        world.beginNewKingdom();
+        world.placeBuildingForTest(BuildingType.CATNIP_FARM,
+                WorldMap.START_ROW, WorldMap.START_COL + 1, 0);
+        PlacedBuilding farm = world.getBuildings().get(1);
+        assertEquals(KingdomWorld.WORKFORCE_OK, world.assignWorker(farm.id));
+        WorkerKitten worker = world.getAssignedWorker(farm.id);
+        assertEquals(DiplomacySystem.ACTION_OK, world.sendEnvoy(Settlement.RIVERWHISKER));
+        world.setResourceForTest(ResourceType.CATNIP, world.getResourceCap() - 2);
+        advanceTime(world, 1f);
+        world.endTurn();
+        advanceUntilCarrying(world, worker);
+
+        assertEquals(KingdomWorld.WORKFORCE_OK, world.unassignWorker(farm.id));
+        advanceTime(world, 8f);
+
+        assertEquals(world.getResourceCap(), world.getResource(ResourceType.CATNIP));
+        assertEquals(2, farm.pendingAmount);
+        assertEquals(0, worker.carriedAmount);
+        assertEquals(WorkerKitten.IDLE, worker.state);
+        assertEquals(KingdomWorld.WORKFORCE_OK, world.assignWorker(farm.id));
+        assertEquals(worker.id, world.getAssignedWorker(farm.id).id);
+    }
+
+    @Test
+    public void missingDepotNeverRecursesOrTrapsWorker() {
+        KingdomWorld original = new KingdomWorld(null);
+        original.beginNewKingdom();
+        KingdomSaveData save = original.snapshot();
+        save.buildings.clear();
+        save.workers.clear();
+        save.workers.add(new int[]{4, WorldMap.START_ROW - 1, WorldMap.START_COL,
+                BuildingType.NONE, ResourceType.CATNIP, 3, BuildingType.NONE, 1});
+        save.resources[ResourceType.CATNIP] = 0;
+
+        KingdomWorld restored = new KingdomWorld(null);
+        restored.continueKingdom(save);
+
+        assertEquals(1, restored.getIdleWorkerCount());
+        assertEquals(3, restored.getResource(ResourceType.CATNIP));
+        assertEquals(WorkerKitten.IDLE, restored.getWorkers().get(0).state);
+    }
+
+    @Test
     public void populationNeverShrinksEvenWithoutFish() {
         KingdomWorld world = new KingdomWorld(null);
         world.beginNewKingdom();
@@ -279,5 +346,12 @@ public final class KingdomWorldTest {
         for (int i = 0; i < steps; i++) {
             world.update(0.1f);
         }
+    }
+
+    private static void advanceUntilCarrying(KingdomWorld world, WorkerKitten worker) {
+        for (int step = 0; step < 100 && worker.carriedAmount == 0; step++) {
+            world.update(0.1f);
+        }
+        assertTrue("Worker never collected the ready batch", worker.carriedAmount > 0);
     }
 }
