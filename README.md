@@ -44,18 +44,21 @@ routes continue exchanging resources with the home kingdom.
 
 ![World map with neighbouring settlements and diplomacy actions](art/runtime-world-map.png)
 
-Build is an eight-page catalogue of four large illustrated cards per page;
-Research is a six-page catalogue using the same readable 2x2 layout. Both
-respond to a horizontal swipe or arrow buttons and play a quiet page-turn
+Build is an eight-page catalogue of four large illustrated cards per page:    
+
+![Build catalogue with four large building cards per page](art/runtime-build-cards-1.3.0.png)    
+
+Research is a six-page catalogue using the same readable 2x2 layout:    
+
+![Technology catalogue with illustrated cards and progression requirements](art/runtime-technology-cards-1.3.0.png)
+
+Both respond to a horizontal swipe or arrow buttons and play a quiet page-turn
 chime. Research and How to Play are full Android Activities, so the system
 Back gesture returns to the kingdom exactly as it left it. How to Play is an eight-page,
 swipeable comic made with the game's real tiles, buildings, kittens, resource
 icons, and EN/RU text. It explains the recommended opening, construction,
 delivery, population growth, hiring, recovery when every worker is occupied,
-and the later expansion path:
-
-![Build catalogue with four large building cards per page](art/runtime-build-cards-1.3.0.png)
-![Technology catalogue with illustrated cards and progression requirements](art/runtime-technology-cards-1.3.0.png)
+and the later expansion path
 
 The pause card uses the same EN/RU switch as every other screen:
 
