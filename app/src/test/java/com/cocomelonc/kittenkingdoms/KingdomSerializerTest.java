@@ -54,6 +54,7 @@ public final class KingdomSerializerTest {
         original.envoyWorkerIds = new int[]{-1, 0, 2, -1, -1, -1, 4, -1};
         original.courierWorkerIds = new int[]{1, -1, -1, 3, -1, 5, -1, -1};
         original.totalTrades = 17;
+        original.wageDebt = 9;
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         KingdomSerializer.write(original, out);
@@ -83,6 +84,7 @@ public final class KingdomSerializerTest {
         assertArrayEquals(original.envoyWorkerIds, restored.envoyWorkerIds);
         assertArrayEquals(original.courierWorkerIds, restored.courierWorkerIds);
         assertEquals(original.totalTrades, restored.totalTrades);
+        assertEquals(original.wageDebt, restored.wageDebt);
     }
 
     @Test

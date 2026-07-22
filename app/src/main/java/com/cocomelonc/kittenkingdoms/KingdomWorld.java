@@ -48,6 +48,8 @@ final class KingdomWorld {
 
         void onPopulationGrew(int newPopulation);
 
+        void onWagesDue(int fishPaid, int fishStillOwed);
+
         void onDiplomacyEvent(int settlementId, int eventMask);
 
         void onGoodsReady(int buildingId, int resourceId, int amount);
@@ -63,6 +65,12 @@ final class KingdomWorld {
     private static final float COLLECTION_SECONDS = 0.8f;
     static final int HIRE_FISH_COST = 5;
     static final int HIRE_CATNIP_COST = 2;
+    // Every WAGE_INTERVAL_TURNS the workforce expects a fish "payday" scaled to the number of
+    // working kittens. It is a soft upkeep: unpaid wages become debt that quietly settles from
+    // any spare fish, and while any debt remains the population simply stops growing. Nobody ever
+    // starves or is dismissed, so the "you can only grow, never fail" promise still holds.
+    static final int WAGE_INTERVAL_TURNS = 15;
+    static final int WAGE_FISH_PER_WORKER = 2;
     private static final int STARTING_WOOD = 35;
     private static final int STARTING_STONE = 25;
     private static final int STARTING_POPULATION = 2;
@@ -97,6 +105,7 @@ final class KingdomWorld {
     private int nextBuildingId;
     private int nextWorkerId;
     private int totalTrades;
+    private int wageDebt;
 
     KingdomWorld(Listener listener) {
         this.listener = listener;
@@ -159,6 +168,7 @@ final class KingdomWorld {
         nextBuildingId = 0;
         nextWorkerId = 0;
         totalTrades = 0;
+        wageDebt = 0;
         buildings.add(new PlacedBuilding(nextBuildingId++, BuildingType.TOWN_HALL, row, col, 0));
         map.markOccupied(row, col);
         map.revealAround(row, col);
@@ -797,9 +807,30 @@ final class KingdomWorld {
         prepareProductionBatches(delta);
 
         int foodUpkeep = TurnMath.computeFoodUpkeep(population);
-        if (resources[ResourceType.FISH] >= foodUpkeep) {
+        boolean fed = resources[ResourceType.FISH] >= foodUpkeep;
+        if (fed) {
             resources[ResourceType.FISH] -= foodUpkeep;
             delta[ResourceType.FISH] -= foodUpkeep;
+        }
+
+        boolean payday = turn % WAGE_INTERVAL_TURNS == 0;
+        if (payday) {
+            wageDebt += workers.size() * WAGE_FISH_PER_WORKER;
+        }
+        boolean hadWageDebt = wageDebt > 0;
+        int wagesPaid = 0;
+        if (wageDebt > 0) {
+            wagesPaid = Math.min(resources[ResourceType.FISH], wageDebt);
+            resources[ResourceType.FISH] -= wagesPaid;
+            delta[ResourceType.FISH] -= wagesPaid;
+            wageDebt -= wagesPaid;
+        }
+        boolean wagesJustSettled = hadWageDebt && wageDebt == 0;
+        if (listener != null && (payday || wagesJustSettled)) {
+            listener.onWagesDue(wagesPaid, wageDebt);
+        }
+
+        if (fed && wageDebt == 0) {
             int housingCap = TurnMath.computeHousingCap(buildings, buildingTypes);
             int growthThreshold = TurnMath.computePopulationGrowthThreshold(
                     buildings, buildingTypes, techUnlocked, techNodes);
@@ -907,6 +938,7 @@ final class KingdomWorld {
         data.envoyWorkerIds = envoyWorkerIds.clone();
         data.courierWorkerIds = courierWorkerIds.clone();
         data.totalTrades = totalTrades;
+        data.wageDebt = wageDebt;
         return data;
     }
 
@@ -945,6 +977,7 @@ final class KingdomWorld {
         population = Math.max(0, data.population);
         techPointPool = Math.max(0, data.techPointPool);
         totalTrades = Math.max(0, data.totalTrades);
+        wageDebt = Math.max(0, data.wageDebt);
         activeTechId = (data.activeTechId >= 0 && data.activeTechId < TechNode.COUNT)
                 ? data.activeTechId : TechNode.NONE;
         for (int i = 0; i < TechNode.COUNT && i < data.techUnlocked.length; i++) {
@@ -1482,6 +1515,22 @@ final class KingdomWorld {
 
     int getTotalTrades() {
         return totalTrades;
+    }
+
+    /** Fish the workforce is still owed; while this is above zero the population will not grow. */
+    int getWageDebt() {
+        return wageDebt;
+    }
+
+    /** The fish the next payday will add to the wage bill, at the current headcount. */
+    int getNextWageAmount() {
+        return workers.size() * WAGE_FISH_PER_WORKER;
+    }
+
+    /** Turns remaining until the next wage payday (1..WAGE_INTERVAL_TURNS). */
+    int getTurnsUntilPayday() {
+        int into = turn % WAGE_INTERVAL_TURNS;
+        return WAGE_INTERVAL_TURNS - into;
     }
 
     int checkTrade(int settlementId, int offerIndex) {

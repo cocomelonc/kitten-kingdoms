@@ -222,6 +222,8 @@
     <string name="notify_tech_unlocked">Изучено: %1$s</string>
     <string name="notify_goods_delivered">На складе: +%1$d %2$s</string>
     <string name="notify_worker_hired">Новый котёнок вышел на работу</string>
+    <string name="notify_wages_paid">День выплаты · рыбы выдано котятам: %1$d</string>
+    <string name="notify_wages_overdue">Котята ждут зарплату · рост на паузе, долг рыбы: %1$d</string>
     <string name="notify_worker_assigned">Котёнок назначен</string>
     <string name="notify_worker_released">Котёнок свободен для другой работы</string>
 
@@ -270,6 +272,8 @@
     <string name="stats_population">Население: %1$d / %2$d</string>
     <string name="stats_workers">Работники / свободны: %1$d / %2$d</string>
     <string name="stats_busy_workers">Заняты работой: %1$d</string>
+    <string name="stats_wages_next">Выплата через %2$d · нужно рыбы: %1$d</string>
+    <string name="stats_wages_owed">Рост на паузе · долг рыбы: %1$d</string>
     <string name="stats_progress_title">Развитие</string>
     <string name="stats_turn">Ход: %1$d</string>
     <string name="stats_explored">Исследовано мира: %1$d%%</string>

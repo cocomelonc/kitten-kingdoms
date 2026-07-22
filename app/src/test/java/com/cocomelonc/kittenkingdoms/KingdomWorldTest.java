@@ -270,6 +270,51 @@ public final class KingdomWorldTest {
     }
 
     @Test
+    public void wagesComeDueEveryFifteenTurnsScaledToWorkerCount() {
+        KingdomWorld world = new KingdomWorld(null);
+        world.beginNewKingdom();
+        assertEquals(2, world.getWorkerCount());
+
+        advanceTurns(world, KingdomWorld.WAGE_INTERVAL_TURNS - 1);
+        assertEquals(0, world.getWageDebt());
+
+        world.endTurn();
+        assertEquals(2 * KingdomWorld.WAGE_FISH_PER_WORKER, world.getWageDebt());
+    }
+
+    @Test
+    public void spareFishAutomaticallySettlesWageDebtAndResumesGrowth() {
+        KingdomWorld world = new KingdomWorld(null);
+        world.beginNewKingdom();
+        advanceTurns(world, KingdomWorld.WAGE_INTERVAL_TURNS);
+        assertEquals(2 * KingdomWorld.WAGE_FISH_PER_WORKER, world.getWageDebt());
+        assertEquals(2, world.getPopulation());
+
+        world.setResourceForTest(ResourceType.FISH, 20);
+        world.endTurn();
+
+        assertEquals(0, world.getWageDebt());
+        // Fish spent this turn = food upkeep for population 2, plus the outstanding back wages.
+        int foodUpkeep = TurnMath.computeFoodUpkeep(2);
+        assertEquals(20 - foodUpkeep - 2 * KingdomWorld.WAGE_FISH_PER_WORKER,
+                world.getResource(ResourceType.FISH));
+        // Debt cleared and fish still above the growth threshold, so the kingdom grows again.
+        assertEquals(3, world.getPopulation());
+    }
+
+    @Test
+    public void wageDebtSurvivesSaveRoundTrip() {
+        KingdomWorld original = new KingdomWorld(null);
+        original.beginNewKingdom();
+        advanceTurns(original, KingdomWorld.WAGE_INTERVAL_TURNS);
+        assertEquals(2 * KingdomWorld.WAGE_FISH_PER_WORKER, original.getWageDebt());
+
+        KingdomWorld restored = new KingdomWorld(null);
+        restored.continueKingdom(original.snapshot());
+        assertEquals(original.getWageDebt(), restored.getWageDebt());
+    }
+
+    @Test
     public void upkeepSoftFailIdlesBuildingWithoutDestroyingIt() {
         KingdomWorld world = new KingdomWorld(null);
         world.beginNewKingdom();

@@ -31,4 +31,5 @@ final class KingdomSaveData {
     int[] envoyWorkerIds;
     int[] courierWorkerIds;
     int totalTrades;
+    int wageDebt;
 }

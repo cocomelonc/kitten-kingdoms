@@ -1129,7 +1129,11 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
                 String.format(text(R.string.stats_workers), world.getWorkerCount(),
                         world.getIdleWorkerCount()),
                 String.format(text(R.string.stats_busy_workers),
-                        world.getWorkerCount() - world.getIdleWorkerCount()), "");
+                        world.getWorkerCount() - world.getIdleWorkerCount()),
+                world.getWageDebt() > 0
+                        ? String.format(text(R.string.stats_wages_owed), world.getWageDebt())
+                        : String.format(text(R.string.stats_wages_next),
+                                world.getNextWageAmount(), world.getTurnsUntilPayday()));
         drawStatisticsCard(canvas, 130f, 382f, text(R.string.stats_progress_title),
                 String.format(text(R.string.stats_turn), world.getTurn()),
                 String.format(text(R.string.stats_explored), world.getExploredPercent()),
@@ -2422,6 +2426,15 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     @Override
     public void onPopulationGrew(int newPopulation) {
         audio.playPopulationGrew();
+    }
+
+    @Override
+    public void onWagesDue(int fishPaid, int fishStillOwed) {
+        if (fishStillOwed > 0) {
+            enqueueNotification(String.format(text(R.string.notify_wages_overdue), fishStillOwed));
+        } else {
+            enqueueNotification(String.format(text(R.string.notify_wages_paid), fishPaid));
+        }
     }
 
     @Override

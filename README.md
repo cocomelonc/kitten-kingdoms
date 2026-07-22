@@ -184,6 +184,12 @@ Explore → Fishing Dock + Catnip Farm → Deliver goods → Grow to 3 kittens
 - **Grow**: population grows toward each building's housing capacity as long
   as there's enough Fish; if there isn't, growth just pauses - it never
   reverses.
+- **Wages**: every 15 turns the workforce expects a Fish payday of 2 Fish per
+  working kitten, so a larger kingdom must keep fishing to match its headcount.
+  Unpaid wages become debt that quietly settles from any spare Fish; while a
+  debt remains, population growth pauses. Nobody ever starves or is dismissed -
+  it is a gentle pressure, not a fail state. The Statistics *Kittens* card shows
+  the next payday and any outstanding wages.
 - **Research**: tech points accumulate every turn from the Town Hall and
   knowledge buildings. The 24 technologies are shown as large illustrated
   cards, four per page. Earlier research is prerequisite-only; later cards can

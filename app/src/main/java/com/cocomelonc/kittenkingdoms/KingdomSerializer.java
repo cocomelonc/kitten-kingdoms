@@ -19,7 +19,9 @@ import java.util.ArrayList;
  * so the caller can fall back to a fresh kingdom rather than crash.
  */
 final class KingdomSerializer {
-    private static final int SAVE_VERSION = 7;
+    private static final int SAVE_VERSION = 8;
+    private static final int WAGES_SAVE_VERSION = 8;
+    private static final int TRADE_SAVE_VERSION = 7;
     private static final int LOGISTICS_SAVE_VERSION = 6;
     private static final int DIPLOMATIC_WORKER_SAVE_VERSION = 5;
     private static final int WORKER_SAVE_VERSION = 4;
@@ -54,13 +56,15 @@ final class KingdomSerializer {
         writeWorkers(out, data);
         writeDiplomaticWorkers(out, data);
         out.writeInt(Math.max(0, data.totalTrades));
+        out.writeInt(Math.max(0, data.wageDebt));
         out.flush();
     }
 
     static KingdomSaveData read(InputStream rawIn) throws IOException {
         DataInputStream in = new DataInputStream(rawIn);
         int version = in.readInt();
-        if (version != SAVE_VERSION && version != LOGISTICS_SAVE_VERSION
+        if (version != SAVE_VERSION && version != TRADE_SAVE_VERSION
+                && version != LOGISTICS_SAVE_VERSION
                 && version != DIPLOMATIC_WORKER_SAVE_VERSION
                 && version != WORKER_SAVE_VERSION
                 && version != DIPLOMACY_SAVE_VERSION && version != LEGACY_SAVE_VERSION) {
@@ -110,8 +114,11 @@ final class KingdomSerializer {
         if (version >= DIPLOMATIC_WORKER_SAVE_VERSION) {
             readDiplomaticWorkers(in, data, savedSettlementCount);
         }
-        if (version >= SAVE_VERSION) {
+        if (version >= TRADE_SAVE_VERSION) {
             data.totalTrades = Math.max(0, in.readInt());
+        }
+        if (version >= WAGES_SAVE_VERSION) {
+            data.wageDebt = Math.max(0, in.readInt());
         }
         return data;
     }
