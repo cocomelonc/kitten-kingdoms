@@ -97,6 +97,29 @@ final class TurnMath {
         return (population + 3) / 4;
     }
 
+    /**
+     * How many turns a staffed workshop spends gathering before it readies one batch of the given
+     * resource. Staggering the rhythms keeps deliveries and on-screen events from all landing on the
+     * same turn once a kingdom has many workshops, so the world grows slowly and calmly. Fish stays
+     * every turn because it feeds food upkeep and wages; heavier raw materials come in more slowly.
+     */
+    static int productionIntervalForResource(int resourceId) {
+        switch (resourceId) {
+            case ResourceType.FISH:
+                return 1;
+            case ResourceType.CATNIP:
+            case ResourceType.YARN:
+                return 2;
+            case ResourceType.WOOD:
+            case ResourceType.STONE:
+                return 3;
+            case ResourceType.CRYSTALS:
+                return 4;
+            default:
+                return 1;
+        }
+    }
+
     static int clamp(int value, int min, int max) {
         return Math.max(min, Math.min(max, value));
     }

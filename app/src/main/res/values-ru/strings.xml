@@ -110,6 +110,7 @@
     <string name="building_locked">Откроется с развитием</string>
     <string name="available_from_start">Доступно с начала игры</string>
     <string name="building_produces">Производит %1$d %2$s за ход</string>
+    <string name="building_produces_every">Производит %1$d %2$s · ходов на партию: %3$d</string>
     <string name="building_housing_storage">Жильё +%1$d · Склад +%2$d</string>
     <string name="building_science">Наука +%1$d / ход</string>
     <string name="building_storage">Склад +%1$d</string>
@@ -129,11 +130,11 @@
     <string name="guide_construction_body">Размещение создаёт стройплощадку, а не готовое здание. Ближайший свободный котёнок подходит к ней и выполняет этапы работы. Значок с восклицательным знаком означает, что площадка спокойно ждёт строителя.</string>
     <string name="guide_construction_tip">Работники производства остаются на местах. Освободи одного, если все заняты.</string>
     <string name="guide_delivery_title">Товары нужно доставить</string>
-    <string name="guide_delivery_body">«Завершить ход» готовит партию в каждом работающем здании. Над ним появляется значок товара. Назначенный котёнок забирает груз, несёт его по карте и складывает в ближайшую ратушу или амбар.</string>
+    <string name="guide_delivery_body">«Завершить ход» готовит партии в работающих зданиях, но не все сразу: рыба — каждый ход, мята и пряжа — раз в пару ходов, дерево и камень — ещё медленнее. Над зданием появляется значок готового товара; назначенный котёнок несёт его в ближайшую ратушу или амбар.</string>
     <string name="guide_delivery_tip">Верхняя панель показывает запас/лимит. ПОЛОН — потрать, продай или добавь жильё/склад; товары безопасно ждут в зданиях.</string>
     <string name="guide_balance_title">Рыба, мята, затем рост</string>
-    <string name="guide_balance_body">Ратуша уже даёт жильё четырём котятам, поэтому ранний домик не нужен. Оставь работника на причале и ферме. После доставки завершай ходы: рыба покрывает питание и постепенно увеличивает население с двух до трёх.</string>
-    <string name="guide_balance_tip">Дождись доставки перед новым ходом или попыткой потратить готовую партию.</string>
+    <string name="guide_balance_body">Ратуша уже даёт жильё четырём котятам, поэтому ранний домик не нужен. Держи причал и ферму с работниками. Рыба покрывает питание и раз в 15 ходов — зарплату котятам по 2 рыбы за работника, так что лови рыбу по мере роста. Королевство растёт медленно и спокойно, начиная с двух жителей.</string>
+    <string name="guide_balance_tip">Невыплаченная зарплата лишь ставит рост на паузу, а не заканчивает игру. Добыча нарочно разнесена по ходам — расти спокойно.</string>
     <string name="guide_hiring_title">Найм в ратуше</string>
     <string name="guide_hiring_body">Коснись ратуши и выбери «Нанять котёнка». Найм стоит 5 рыбы и 2 мяты, а население должно быть больше числа работников. Новый работник сразу берёт самую старую ожидающую стройку.</string>
     <string name="guide_hiring_tip">Серая кнопка означает: не хватает ресурсов или нужно дождаться нового жителя.</string>
@@ -220,7 +221,6 @@
 
     <string name="notify_building_built">Построено: %1$s</string>
     <string name="notify_tech_unlocked">Изучено: %1$s</string>
-    <string name="notify_goods_delivered">На складе: +%1$d %2$s</string>
     <string name="notify_worker_hired">Новый котёнок вышел на работу</string>
     <string name="notify_wages_paid">День выплаты · рыбы выдано котятам: %1$d</string>
     <string name="notify_wages_overdue">Котята ждут зарплату · рост на паузе, долг рыбы: %1$d</string>
@@ -238,6 +238,7 @@
     <string name="hire_kitten">Нанять котёнка</string>
     <string name="production_heading">Работа и доставка</string>
     <string name="production_per_turn">%1$d %2$s за ход</string>
+    <string name="production_every">%1$d %2$s · ходов на партию: %3$d</string>
     <string name="goods_waiting">Готово к сбору: %1$d</string>
     <string name="goods_waiting_storage_full">Склад заполнен · в очереди: %1$d</string>
     <string name="no_goods_waiting">Новая партия ещё не готова</string>

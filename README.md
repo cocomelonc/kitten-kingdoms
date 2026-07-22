@@ -106,12 +106,15 @@ workers keep their jobs until you release them.
 
 #### Page 4 - Goods must reach storage
 
-*End Turn* prepares a batch at each staffed production building. A resource
-icon appears above it; the assigned kitten collects the batch, carries it
-across the map, and deposits it at the closest Town Hall or Storage Barn. Only
-delivered goods appear in the top bar and can be spent. Every resource now
-shows `stored/capacity`, a fill bar, and a clear `FULL` warning. Goods wait
-safely at their workshop when that resource section is full.
+*End Turn* readies batches at staffed production buildings, but staggered by
+resource so the world grows slowly and events do not all land at once: Fish
+every turn, Catnip and Yarn every two turns, Wood and Stone every three, and
+Crystals every four. A resource icon appears above a workshop when its batch is
+ready; the assigned kitten collects it, carries it across the map, and deposits
+it at the closest Town Hall or Storage Barn. Only delivered goods appear in the
+top bar and can be spent. Every resource shows `stored/capacity`, a fill bar,
+and a clear `FULL` warning. Goods wait safely at their workshop when that
+resource section is full.
 
 #### Page 5 - Fish, Catnip, then growth
 
@@ -170,8 +173,11 @@ Explore → Fishing Dock + Catnip Farm → Deliver goods → Grow to 3 kittens
   their matching water, forest, or stone terrain nearby. Placements that would
   disconnect the road network or create a new dead end are rejected.
 - **Produce and deliver**: production buildings prepare Fish, Wood, Stone,
-  Catnip, Yarn, or Crystals on *End Turn*, but the stockpile does not increase
-  immediately. A resource bubble appears above the building; its assigned
+  Catnip, Yarn, or Crystals on *End Turn*, but on a staggered cadence per
+  resource (Fish every turn, Catnip and Yarn every two, Wood and Stone every
+  three, Crystals every four) so a large kingdom grows calmly instead of
+  flooding the map with simultaneous deliveries. The stockpile does not increase
+  immediately: a resource bubble appears above the building; its assigned
   kitten collects the batch, walks to the closest completed Town Hall or
   storage building, and only then deposits it. Ready queues hold up to three
   batches, and a workshop without a worker stays idle. A full resource section

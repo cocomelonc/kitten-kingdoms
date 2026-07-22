@@ -16,6 +16,9 @@ final class PlacedBuilding {
     int pendingResourceId = ResourceType.NONE;
     int pendingAmount;
     float constructionTimer;
+    // Turns spent gathering toward the next batch. Transient timing state: it is not saved, so a
+    // reloaded workshop simply starts its next cycle fresh (at most one interval of delay).
+    int productionProgress;
 
     PlacedBuilding(int id, int typeId, int row, int col, int turnsRemaining) {
         this.id = id;

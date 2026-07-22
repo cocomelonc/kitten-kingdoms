@@ -163,6 +163,9 @@ public final class KingdomWorldTest {
         advanceTime(world, 5f);
         assertTrue(farm.isComplete());
         assertEquals(0, world.getResource(ResourceType.CATNIP));
+        // Catnip gathers over two turns before a batch is ready (staggered production cadence).
+        world.endTurn();
+        assertEquals(0, farm.pendingAmount);
         world.endTurn();
         assertEquals(4, farm.pendingAmount);
         assertEquals(0, world.getResource(ResourceType.CATNIP));
@@ -201,6 +204,8 @@ public final class KingdomWorldTest {
         advanceTime(world, 1f);
         world.setResourceForTest(ResourceType.CATNIP, world.getResourceCap());
 
+        // Two turns for one catnip batch (staggered cadence); storage is full so it must wait.
+        world.endTurn();
         world.endTurn();
         advanceTime(world, 5f);
 
@@ -223,6 +228,8 @@ public final class KingdomWorldTest {
         assertEquals(DiplomacySystem.ACTION_OK, world.sendEnvoy(Settlement.RIVERWHISKER));
         world.setResourceForTest(ResourceType.CATNIP, world.getResourceCap() - 2);
         advanceTime(world, 1f);
+        // Two turns for one catnip batch (staggered cadence) before the worker can collect.
+        world.endTurn();
         world.endTurn();
         advanceUntilCarrying(world, worker);
 
@@ -312,6 +319,33 @@ public final class KingdomWorldTest {
         KingdomWorld restored = new KingdomWorld(null);
         restored.continueKingdom(original.snapshot());
         assertEquals(original.getWageDebt(), restored.getWageDebt());
+    }
+
+    @Test
+    public void productionCadenceStaggersHeavyResources() {
+        assertEquals(1, TurnMath.productionIntervalForResource(ResourceType.FISH));
+        assertEquals(2, TurnMath.productionIntervalForResource(ResourceType.CATNIP));
+        assertEquals(2, TurnMath.productionIntervalForResource(ResourceType.YARN));
+        assertEquals(3, TurnMath.productionIntervalForResource(ResourceType.WOOD));
+        assertEquals(3, TurnMath.productionIntervalForResource(ResourceType.STONE));
+        assertEquals(4, TurnMath.productionIntervalForResource(ResourceType.CRYSTALS));
+    }
+
+    @Test
+    public void woodWorkshopReadiesOneBatchEveryThirdTurn() {
+        KingdomWorld world = new KingdomWorld(null);
+        world.beginNewKingdom();
+        world.placeBuildingForTest(BuildingType.LUMBER_CAMP,
+                WorldMap.START_ROW, WorldMap.START_COL + 1, 0);
+        PlacedBuilding camp = world.getBuildings().get(1);
+        assertEquals(KingdomWorld.WORKFORCE_OK, world.assignWorker(camp.id));
+
+        world.endTurn();
+        assertEquals(0, camp.pendingAmount);
+        world.endTurn();
+        assertEquals(0, camp.pendingAmount);
+        world.endTurn();
+        assertTrue(camp.pendingAmount > 0);
     }
 
     @Test

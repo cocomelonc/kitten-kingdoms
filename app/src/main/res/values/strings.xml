@@ -110,6 +110,7 @@
     <string name="building_locked">Locked by progression</string>
     <string name="available_from_start">Available from the beginning</string>
     <string name="building_produces">Produces %1$d %2$s per turn</string>
+    <string name="building_produces_every">Produces %1$d %2$s · turns per batch: %3$d</string>
     <string name="building_housing_storage">Housing +%1$d · Storage +%2$d</string>
     <string name="building_science">Research +%1$d / turn</string>
     <string name="building_storage">Storage +%1$d</string>
@@ -129,11 +130,11 @@
     <string name="guide_construction_body">Placing a building creates a construction site, not a finished building. The closest free kitten walks beside it and completes each work stage. A site with an exclamation mark is safely waiting for a free builder.</string>
     <string name="guide_construction_tip">Production workers stay at their jobs. Release one when every kitten is busy.</string>
     <string name="guide_delivery_title">Goods must reach storage</string>
-    <string name="guide_delivery_body">End Turn prepares a batch at every staffed workshop. Its icon appears above the building. The assigned kitten collects it, carries it across the map, and deposits it at the closest Town Hall or Storage Barn.</string>
+    <string name="guide_delivery_body">End Turn readies batches at staffed workshops, but not all on the same turn: Fish comes in every turn, Catnip and Yarn every couple, Wood and Stone more slowly still. A ready icon appears above the building; the assigned kitten carries it to the closest Town Hall or Storage Barn.</string>
     <string name="guide_delivery_tip">The top bar shows stored/capacity. FULL means spend, trade, or add housing/storage; goods safely wait at workshops.</string>
     <string name="guide_balance_title">Fish, Catnip, then growth</string>
-    <string name="guide_balance_body">The Town Hall already houses four kittens, so an early Cottage is unnecessary. Keep one Dock and one Farm staffed. After deliveries, end turns: Fish pays gentle upkeep and eventually grows the population from two to three.</string>
-    <string name="guide_balance_tip">Let workers finish delivery before ending another turn or trying to spend the batch.</string>
+    <string name="guide_balance_body">The Town Hall already houses four kittens, so an early Cottage is unnecessary. Keep one Dock and one Farm staffed. Fish pays gentle food upkeep and, every 15 turns, kitten wages of 2 Fish per worker - so keep fishing as your workforce grows. The kingdom rises slowly and calmly from two residents upward.</string>
+    <string name="guide_balance_tip">Unpaid wages only pause growth, never end the game. Deliveries are staggered on purpose - grow at an easy pace.</string>
     <string name="guide_hiring_title">Hire at the Town Hall</string>
     <string name="guide_hiring_body">Tap the Town Hall and choose Hire Kitten. Hiring costs 5 Fish and 2 Catnip, and requires population to be greater than the current worker count. A new worker immediately takes the oldest waiting construction job.</string>
     <string name="guide_hiring_tip">A grey Hire button means you need resources or must wait for a new resident.</string>
@@ -220,7 +221,6 @@
 
     <string name="notify_building_built">%1$s built!</string>
     <string name="notify_tech_unlocked">%1$s researched!</string>
-    <string name="notify_goods_delivered">+%1$d %2$s stored</string>
     <string name="notify_worker_hired">A new kitten joined the workforce</string>
     <string name="notify_wages_paid">Payday · fish paid to the kittens: %1$d</string>
     <string name="notify_wages_overdue">Kittens await wages · growth paused, fish owed: %1$d</string>
@@ -238,6 +238,7 @@
     <string name="hire_kitten">Hire Kitten</string>
     <string name="production_heading">Workshop logistics</string>
     <string name="production_per_turn">%1$d %2$s per turn</string>
+    <string name="production_every">%1$d %2$s · turns per batch: %3$d</string>
     <string name="goods_waiting">Ready to collect: %1$d</string>
     <string name="goods_waiting_storage_full">Storage full · queued: %1$d</string>
     <string name="no_goods_waiting">Next batch is not ready</string>

@@ -889,11 +889,19 @@ final class KingdomWorld {
             if (resourceId == ResourceType.NONE || assignedWorker(building.id) == null) {
                 continue;
             }
+            int interval = TurnMath.productionIntervalForResource(resourceId);
+            if (building.productionProgress + 1 < interval) {
+                building.productionProgress++;
+                continue;
+            }
             BuildingType type = buildingTypes[building.typeId];
             int amount = TurnMath.computeYield(type, techUnlocked, techNodes, resourceId);
             int previousAmount = building.pendingAmount;
             int queueCap = Math.max(amount, amount * 3);
             if (building.pendingAmount >= queueCap || !TurnMath.canAffordUpkeep(type, resources)) {
+                // Due, but the store is full or upkeep is unaffordable: stay due and retry next turn
+                // instead of quietly burning the whole interval of gathering.
+                building.productionProgress = interval - 1;
                 continue;
             }
             for (int resource = 0; resource < ResourceType.COUNT; resource++) {
@@ -903,6 +911,7 @@ final class KingdomWorld {
             }
             building.pendingResourceId = resourceId;
             building.pendingAmount = Math.min(queueCap, building.pendingAmount + amount);
+            building.productionProgress = 0;
             if (previousAmount == 0 && building.pendingAmount > 0 && listener != null) {
                 listener.onGoodsReady(building.id, resourceId, building.pendingAmount);
             }

@@ -1252,8 +1252,12 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     private String formatBuildingEffect(BuildingType type) {
         int output = world.getOutputResourceId(type.id);
         if (output != ResourceType.NONE) {
-            return String.format(text(R.string.building_produces), type.outputPerTurn[output],
-                    resourceName(output));
+            int interval = TurnMath.productionIntervalForResource(output);
+            return interval <= 1
+                    ? String.format(text(R.string.building_produces),
+                            type.outputPerTurn[output], resourceName(output))
+                    : String.format(text(R.string.building_produces_every),
+                            type.outputPerTurn[output], resourceName(output), interval);
         }
         if (type.housing > 0) {
             return String.format(text(R.string.building_housing_storage), type.housing,
@@ -1395,8 +1399,13 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
             drawFittedText(canvas, text(R.string.production_heading), infoX, 226f,
                     25f, 600f, 0xFF6D5D45, true);
             drawResourceIcon(canvas, outputResource, infoX - 87f, 273f, 15f);
-            drawFittedText(canvas, String.format(text(R.string.production_per_turn), output,
-                            text(ResourceType.createAll()[outputResource].nameRes)), infoX + 30f, 280f,
+            int outputInterval = TurnMath.productionIntervalForResource(outputResource);
+            String productionText = outputInterval <= 1
+                    ? String.format(text(R.string.production_per_turn), output,
+                            resourceName(outputResource))
+                    : String.format(text(R.string.production_every), output,
+                            resourceName(outputResource), outputInterval);
+            drawFittedText(canvas, productionText, infoX + 30f, 280f,
                     20f, 430f, 0xFF74694F, false);
             String ready;
             if (building.hasReadyGoods()
@@ -2461,10 +2470,9 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
 
     @Override
     public void onGoodsDelivered(int workerId, int resourceId, int amount) {
+        // Routine deliveries stay calm: a soft chime and the HUD tally are feedback enough. No
+        // banner is queued, so a busy kingdom no longer floods the screen with delivery pop-ups.
         audio.playGoodsDelivered(resourceId);
-        ResourceType resource = ResourceType.createAll()[resourceId];
-        enqueueNotification(String.format(text(R.string.notify_goods_delivered),
-                amount, text(resource.nameRes)));
         saveKingdom();
     }
 
