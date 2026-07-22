@@ -20,6 +20,10 @@ consistent on every Android device.
 
 ### Screenshots
 
+All screenshots below were recaptured from the `1.1.1-debug` APK on Android
+16/API 36 after the unified terrain, animated animals, diplomacy, complete
+fog-of-war surveying, and new building-icon work.
+
 | English | Русский |
 |---|---|
 | ![English title screen](art/runtime-title.png) | ![Russian title screen](art/runtime-title-ru.png) |
@@ -28,7 +32,7 @@ The pannable, pinch-zoomable world viewport sits below a fixed resource bar;
 fog of war reveals permanently as the kitten walks, and buildings can be
 placed on any discovered tile once you can afford them.
 
-![World view with fog of war and a building under construction](art/runtime-level.png)
+![World view with unified terrain, the kitten, wildlife, and fog of war](art/runtime-level.png)
 
 The regional World Map is a real second play layer: four settlements keep
 their own relationship score, travellers take turns to arrive, and unlocked
