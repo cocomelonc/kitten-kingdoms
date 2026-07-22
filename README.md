@@ -22,9 +22,10 @@ consistent on every Android device.
 
 ### Screenshots
 
-The screenshots below were captured from version 1.4.0 running on Android
+The screenshots below were captured from version 1.5.0 running on Android
 16/API 36. They show the unified terrain, animated animals, eight-kingdom
-diplomacy, manual markets, visible storage limits, and kingdom statistics.
+diplomacy, manual markets, visible storage limits, kingdom statistics, the
+staggered production cadence, wage upkeep, and craftable champion super-kittens.
 
 | English | Русский |
 |---|---|
@@ -53,10 +54,28 @@ free destination capacity before anything is committed.
 ![Riverwhisker market with two sell and two buy offers](art/runtime-market-1.4.0.png)
 
 The four-page Statistics screen keeps the economy readable without crowding
-the main HUD: it summarizes storage, queued deliveries, kittens, progress,
-diplomatic relationships, trades, and counts for all 32 building types.
+the main HUD: it summarizes storage, queued deliveries, kittens (including the
+next wage payday), progress, diplomatic relationships, trades, and counts for
+all 32 building types.
 
-![Kingdom statistics overview](art/runtime-statistics-1.4.0.png)
+![Kingdom statistics overview with the next wage payday](art/runtime-statistics-1.5.0.png)
+
+Growth is deliberately slow and calm. Workshops ready their batches on a
+staggered, per-resource cadence - Fish every turn, Catnip and Yarn every two,
+Wood and Stone every three, Crystals every four - so a busy kingdom never floods
+the map with simultaneous deliveries. Each building card states its exact rhythm.
+
+![Lumber Camp card showing the staggered production cadence](art/runtime-workshop-1.5.0.png)
+
+Every 15 turns the workforce expects a gentle Fish payday of two Fish per
+working kitten; unpaid wages simply pause population growth and never cause a
+failure. Once Crystal Craft is researched, the Town Hall can craft up to three
+champion super-kittens from Crystals, Yarn, and Catnip. Each craft rolls one of
+five bounded abilities at random, and champions wear a gold star and serve
+without wages.
+
+| ![Town Hall crafting a champion super-kitten](art/runtime-craft-champion-1.5.0.png) | ![A gold-star champion beside the Town Hall](art/runtime-champion-1.5.0.png) |
+| --- | --- |
 
 Build is an eight-page catalogue of four large illustrated cards per page:    
 
