@@ -57,6 +57,8 @@ final class KingdomWorld {
         void onGoodsDelivered(int workerId, int resourceId, int amount);
 
         void onWorkerHired(int workerId);
+
+        void onChampionCrafted(int workerId, int ability);
     }
 
     private static final float MOVE_SPEED = 4.2f;
@@ -71,6 +73,21 @@ final class KingdomWorld {
     // starves or is dismissed, so the "you can only grow, never fail" promise still holds.
     static final int WAGE_INTERVAL_TURNS = 15;
     static final int WAGE_FISH_PER_WORKER = 2;
+    // Champions (super-kittens) are crafted from a rich resource blend once Crystal Craft is known.
+    // Each craft rolls one random ability. The cap and steep Crystal price keep them a rare treat.
+    static final int CHAMPION_TECH = TechNode.CRYSTAL_CRAFT;
+    static final int CHAMPION_CAP = 3;
+    static final int CHAMPION_CATNIP_COST = 10;
+    static final int CHAMPION_YARN_COST = 10;
+    static final int CHAMPION_CRYSTAL_COST = 12;
+    private static final int PROSPECTOR_INTERVAL_TURNS = 5;
+    private static final int PROSPECTOR_CRYSTALS = 1;
+
+    static final int CHAMPION_OK = 0;
+    static final int CHAMPION_NEEDS_TECH = 1;
+    static final int CHAMPION_AT_CAP = 2;
+    static final int CHAMPION_NEEDS_RESOURCES = 3;
+    static final int CHAMPION_POPULATION_LIMIT = 4;
     private static final int STARTING_WOOD = 35;
     private static final int STARTING_STONE = 25;
     private static final int STARTING_POPULATION = 2;
@@ -427,7 +444,9 @@ final class KingdomWorld {
     }
 
     private void advanceWorker(WorkerKitten worker, float elapsedSeconds) {
-        float remaining = WORKER_MOVE_SPEED * elapsedSeconds;
+        float moveSpeed = worker.championAbility == WorkerKitten.ABILITY_SWIFT_PAWS
+                ? WORKER_MOVE_SPEED * 2f : WORKER_MOVE_SPEED;
+        float remaining = moveSpeed * elapsedSeconds;
         while (remaining > 0f && !worker.path.isEmpty()) {
             int next = worker.path.peekFirst();
             int nextRow = next / WorldMap.SIZE;
@@ -534,7 +553,9 @@ final class KingdomWorld {
             return;
         }
         worker.actionTimer += elapsedSeconds;
-        building.constructionTimer += elapsedSeconds;
+        float buildSpeed = worker.championAbility == WorkerKitten.ABILITY_STURDY_BUILDER
+                ? elapsedSeconds * 2f : elapsedSeconds;
+        building.constructionTimer += buildSpeed;
         while (building.constructionTimer >= CONSTRUCTION_STEP_SECONDS && building.turnsRemaining > 0) {
             building.constructionTimer -= CONSTRUCTION_STEP_SECONDS;
             building.turnsRemaining--;
@@ -578,7 +599,9 @@ final class KingdomWorld {
             return;
         }
         worker.actionTimer += elapsedSeconds;
-        if (worker.actionTimer < COLLECTION_SECONDS || !building.hasReadyGoods()) {
+        float collectTime = worker.championAbility == WorkerKitten.ABILITY_SWIFT_PAWS
+                ? COLLECTION_SECONDS / 2f : COLLECTION_SECONDS;
+        if (worker.actionTimer < collectTime || !building.hasReadyGoods()) {
             return;
         }
         int amount = Math.min(building.pendingAmount,
@@ -813,9 +836,22 @@ final class KingdomWorld {
             delta[ResourceType.FISH] -= foodUpkeep;
         }
 
+        // Prospector champions passively turn up a little Crystal now and then, no building needed.
+        if (turn % PROSPECTOR_INTERVAL_TURNS == 0) {
+            int found = countChampionsWithAbility(WorkerKitten.ABILITY_PROSPECTOR)
+                    * PROSPECTOR_CRYSTALS;
+            int room = availableStorageRoom(ResourceType.CRYSTALS);
+            int gained = Math.min(found, room);
+            if (gained > 0) {
+                resources[ResourceType.CRYSTALS] += gained;
+                delta[ResourceType.CRYSTALS] += gained;
+            }
+        }
+
         boolean payday = turn % WAGE_INTERVAL_TURNS == 0;
         if (payday) {
-            wageDebt += workers.size() * WAGE_FISH_PER_WORKER;
+            // Champions serve for honour, not fish: only ordinary kittens draw wages.
+            wageDebt += countWageEarningWorkers() * WAGE_FISH_PER_WORKER;
         }
         boolean hadWageDebt = wageDebt > 0;
         int wagesPaid = 0;
@@ -834,6 +870,9 @@ final class KingdomWorld {
             int housingCap = TurnMath.computeHousingCap(buildings, buildingTypes);
             int growthThreshold = TurnMath.computePopulationGrowthThreshold(
                     buildings, buildingTypes, techUnlocked, techNodes);
+            // Nurturer champions make the little ones feel at home, easing the Fish growth threshold.
+            growthThreshold = Math.max(TurnMath.MIN_POPULATION_GROWTH_THRESHOLD,
+                    growthThreshold - countChampionsWithAbility(WorkerKitten.ABILITY_NURTURER));
             if (population < housingCap && resources[ResourceType.FISH] >= growthThreshold) {
                 population++;
                 if (listener != null) {
@@ -886,7 +925,8 @@ final class KingdomWorld {
                 continue;
             }
             int resourceId = outputResourceId(building.typeId);
-            if (resourceId == ResourceType.NONE || assignedWorker(building.id) == null) {
+            WorkerKitten staff = assignedWorker(building.id);
+            if (resourceId == ResourceType.NONE || staff == null) {
                 continue;
             }
             int interval = TurnMath.productionIntervalForResource(resourceId);
@@ -896,6 +936,9 @@ final class KingdomWorld {
             }
             BuildingType type = buildingTypes[building.typeId];
             int amount = TurnMath.computeYield(type, techUnlocked, techNodes, resourceId);
+            if (staff.championAbility == WorkerKitten.ABILITY_BOUNTIFUL) {
+                amount += 1;
+            }
             int previousAmount = building.pendingAmount;
             int queueCap = Math.max(amount, amount * 3);
             if (building.pendingAmount >= queueCap || !TurnMath.canAffordUpkeep(type, resources)) {
@@ -937,7 +980,7 @@ final class KingdomWorld {
         for (WorkerKitten worker : workers) {
             data.workers.add(new int[]{worker.id, worker.row, worker.col, worker.assignedBuildingId,
                     worker.carriedResourceId, worker.carriedAmount, worker.cargoSourceBuildingId,
-                    worker.releaseAfterDelivery ? 1 : 0});
+                    worker.releaseAfterDelivery ? 1 : 0, worker.championAbility});
         }
         data.explored = map.exploredSnapshot();
         data.diplomaticRelations = diplomacy.relationsSnapshot();
@@ -1034,6 +1077,9 @@ final class KingdomWorld {
                 worker.releaseAfterDelivery = entry.length >= 8 && entry[7] != 0;
                 if (worker.releaseAfterDelivery) {
                     worker.assignedBuildingId = BuildingType.NONE;
+                }
+                if (entry.length >= 9 && entry[8] >= 0 && entry[8] < WorkerKitten.ABILITY_COUNT) {
+                    worker.championAbility = entry[8];
                 }
                 if (entry[4] >= 0 && entry[4] < ResourceType.COUNT && entry[5] > 0) {
                     worker.carriedResourceId = entry[4];
@@ -1270,15 +1316,7 @@ final class KingdomWorld {
         }
         resources[ResourceType.FISH] -= HIRE_FISH_COST;
         resources[ResourceType.CATNIP] -= HIRE_CATNIP_COST;
-        PlacedBuilding hall = null;
-        for (PlacedBuilding building : buildings) {
-            if (building.typeId == BuildingType.TOWN_HALL) {
-                hall = building;
-                break;
-            }
-        }
-        int[] home = hall == null ? findOpenCellBeside(row, col)
-                : findOpenCellBeside(hall.row, hall.col);
+        int[] home = townHallHome();
         WorkerKitten worker = new WorkerKitten(nextWorkerId++, home[0], home[1]);
         workers.add(worker);
         dispatchWaitingConstruction();
@@ -1286,6 +1324,104 @@ final class KingdomWorld {
             listener.onWorkerHired(worker.id);
         }
         return WORKFORCE_OK;
+    }
+
+    private int[] townHallHome() {
+        PlacedBuilding hall = null;
+        for (PlacedBuilding building : buildings) {
+            if (building.typeId == BuildingType.TOWN_HALL) {
+                hall = building;
+                break;
+            }
+        }
+        return hall == null ? findOpenCellBeside(row, col)
+                : findOpenCellBeside(hall.row, hall.col);
+    }
+
+    boolean canCraftChampion() {
+        return checkCraftChampion() == CHAMPION_OK;
+    }
+
+    /** Why a champion craft would be refused, so the UI can explain a greyed-out button. */
+    int checkCraftChampion() {
+        if (CHAMPION_TECH < 0 || CHAMPION_TECH >= TechNode.COUNT || !techUnlocked[CHAMPION_TECH]) {
+            return CHAMPION_NEEDS_TECH;
+        }
+        if (countChampions() >= CHAMPION_CAP) {
+            return CHAMPION_AT_CAP;
+        }
+        if (workers.size() >= population) {
+            return CHAMPION_POPULATION_LIMIT;
+        }
+        if (resources[ResourceType.CATNIP] < CHAMPION_CATNIP_COST
+                || resources[ResourceType.YARN] < CHAMPION_YARN_COST
+                || resources[ResourceType.CRYSTALS] < CHAMPION_CRYSTAL_COST) {
+            return CHAMPION_NEEDS_RESOURCES;
+        }
+        return CHAMPION_OK;
+    }
+
+    int craftChampion() {
+        int check = checkCraftChampion();
+        if (check != CHAMPION_OK) {
+            return check;
+        }
+        resources[ResourceType.CATNIP] -= CHAMPION_CATNIP_COST;
+        resources[ResourceType.YARN] -= CHAMPION_YARN_COST;
+        resources[ResourceType.CRYSTALS] -= CHAMPION_CRYSTAL_COST;
+        int[] home = townHallHome();
+        WorkerKitten champion = new WorkerKitten(nextWorkerId++, home[0], home[1]);
+        champion.championAbility = rollChampionAbility(turn, champion.id);
+        workers.add(champion);
+        dispatchWaitingConstruction();
+        if (listener != null) {
+            listener.onChampionCrafted(champion.id, champion.championAbility);
+        }
+        return CHAMPION_OK;
+    }
+
+    /**
+     * Rolls the champion's single ability. The result is a deterministic function of the game state
+     * at craft time, so it feels random yet cannot be re-rolled by reloading the same save.
+     */
+    static int rollChampionAbility(int turn, int workerId) {
+        long seed = (long) turn * 1_000_003L + (long) workerId * 131L + 0x5DEECE66DL;
+        long mixed = seed * 0x9E3779B97F4A7C15L;
+        return (int) Math.floorMod(mixed >>> 32, WorkerKitten.ABILITY_COUNT);
+    }
+
+    private int countChampions() {
+        int count = 0;
+        for (WorkerKitten worker : workers) {
+            if (worker.isChampion()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private int countChampionsWithAbility(int ability) {
+        int count = 0;
+        for (WorkerKitten worker : workers) {
+            if (worker.championAbility == ability) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private int countWageEarningWorkers() {
+        int count = 0;
+        for (WorkerKitten worker : workers) {
+            if (!worker.isChampion()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    int getChampionCount() {
+        return countChampions();
     }
 
     int getWorkerCount() {
@@ -1531,9 +1667,9 @@ final class KingdomWorld {
         return wageDebt;
     }
 
-    /** The fish the next payday will add to the wage bill, at the current headcount. */
+    /** The fish the next payday will add to the wage bill (champions serve for free). */
     int getNextWageAmount() {
-        return workers.size() * WAGE_FISH_PER_WORKER;
+        return countWageEarningWorkers() * WAGE_FISH_PER_WORKER;
     }
 
     /** Turns remaining until the next wage payday (1..WAGE_INTERVAL_TURNS). */

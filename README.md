@@ -187,6 +187,14 @@ Explore → Fishing Dock + Catnip Farm → Deliver goods → Grow to 3 kittens
   a kitten at a workshop, and use the Town Hall to hire another resident for
   5 Fish and 2 Catnip. Workers keep their assignment, finish deliveries, and
   resume work automatically; coloured badges make them easy to distinguish.
+- **Craft champions**: once Crystal Craft is researched, the Town Hall can
+  craft a super-kitten from 12 Crystals, 10 Yarn, and 10 Catnip (up to three).
+  Each craft rolls one of five bounded abilities at random - Swift Paws (twice
+  as fast), Bountiful Harvest (+1 batch at its workshop), Prospector (finds a
+  little Crystal now and then), Nurturer (gentler growth threshold), or Sturdy
+  Builder (builds twice as fast). Champions wear a gold star, serve without
+  wages, and are a modest late-game boost rather than a game-changer. The roll
+  is deterministic from the moment of crafting, so it cannot be save-scummed.
 - **Grow**: population grows toward each building's housing capacity as long
   as there's enough Fish; if there isn't, growth just pauses - it never
   reverses.

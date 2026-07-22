@@ -349,6 +349,99 @@ public final class KingdomWorldTest {
     }
 
     @Test
+    public void craftingAChampionSpendsResourcesAndRollsAnAbility() {
+        KingdomWorld world = championReadyWorld();
+        int workersBefore = world.getWorkerCount();
+
+        assertEquals(KingdomWorld.CHAMPION_OK, world.craftChampion());
+
+        assertEquals(1, world.getChampionCount());
+        assertEquals(workersBefore + 1, world.getWorkerCount());
+        assertEquals(60 - KingdomWorld.CHAMPION_CRYSTAL_COST,
+                world.getResource(ResourceType.CRYSTALS));
+        assertEquals(60 - KingdomWorld.CHAMPION_YARN_COST, world.getResource(ResourceType.YARN));
+        assertEquals(60 - KingdomWorld.CHAMPION_CATNIP_COST, world.getResource(ResourceType.CATNIP));
+        WorkerKitten champion = onlyChampion(world);
+        assertTrue(champion.championAbility >= 0
+                && champion.championAbility < WorkerKitten.ABILITY_COUNT);
+    }
+
+    @Test
+    public void craftingChampionIsGatedByTechThenCap() {
+        KingdomWorld fresh = new KingdomWorld(null);
+        fresh.beginNewKingdom();
+        assertEquals(KingdomWorld.CHAMPION_NEEDS_TECH, fresh.craftChampion());
+
+        KingdomWorld world = championReadyWorld();
+        for (int i = 0; i < KingdomWorld.CHAMPION_CAP; i++) {
+            assertEquals(KingdomWorld.CHAMPION_OK, world.craftChampion());
+        }
+        assertEquals(KingdomWorld.CHAMPION_CAP, world.getChampionCount());
+        assertEquals(KingdomWorld.CHAMPION_AT_CAP, world.craftChampion());
+    }
+
+    @Test
+    public void championsServeWithoutDrawingWages() {
+        KingdomWorld world = championReadyWorld();
+        int baseWage = world.getNextWageAmount();
+        assertEquals(KingdomWorld.CHAMPION_OK, world.craftChampion());
+        // The champion adds a worker but not a wage earner, so the payday bill is unchanged.
+        assertEquals(baseWage, world.getNextWageAmount());
+    }
+
+    @Test
+    public void championAbilityRollStaysInRangeAndReachesEveryAbility() {
+        boolean[] seen = new boolean[WorkerKitten.ABILITY_COUNT];
+        for (int turn = 0; turn < 120; turn++) {
+            for (int id = 0; id < 25; id++) {
+                int ability = KingdomWorld.rollChampionAbility(turn, id);
+                assertTrue(ability >= 0 && ability < WorkerKitten.ABILITY_COUNT);
+                seen[ability] = true;
+            }
+        }
+        for (boolean reached : seen) {
+            assertTrue("Every champion ability must be reachable", reached);
+        }
+    }
+
+    @Test
+    public void championAbilitySurvivesSaveRoundTrip() {
+        KingdomWorld origin = championReadyWorld();
+        assertEquals(KingdomWorld.CHAMPION_OK, origin.craftChampion());
+        int ability = onlyChampion(origin).championAbility;
+
+        KingdomWorld restored = new KingdomWorld(null);
+        restored.continueKingdom(origin.snapshot());
+        assertEquals(1, restored.getChampionCount());
+        assertEquals(ability, onlyChampion(restored).championAbility);
+    }
+
+    private static KingdomWorld championReadyWorld() {
+        KingdomWorld origin = new KingdomWorld(null);
+        origin.beginNewKingdom();
+        KingdomSaveData save = origin.snapshot();
+        save.techUnlocked[TechNode.CRYSTAL_CRAFT] = true;
+        save.population = 8;
+        save.resources[ResourceType.CATNIP] = 60;
+        save.resources[ResourceType.YARN] = 60;
+        save.resources[ResourceType.CRYSTALS] = 60;
+        KingdomWorld world = new KingdomWorld(null);
+        world.continueKingdom(save);
+        return world;
+    }
+
+    private static WorkerKitten onlyChampion(KingdomWorld world) {
+        WorkerKitten found = null;
+        for (WorkerKitten worker : world.getWorkers()) {
+            if (worker.isChampion()) {
+                found = worker;
+            }
+        }
+        assertTrue("Expected a champion in the workforce", found != null);
+        return found;
+    }
+
+    @Test
     public void upkeepSoftFailIdlesBuildingWithoutDestroyingIt() {
         KingdomWorld world = new KingdomWorld(null);
         world.beginNewKingdom();

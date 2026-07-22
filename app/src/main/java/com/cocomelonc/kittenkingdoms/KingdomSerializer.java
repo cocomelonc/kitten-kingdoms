@@ -19,7 +19,8 @@ import java.util.ArrayList;
  * so the caller can fall back to a fresh kingdom rather than crash.
  */
 final class KingdomSerializer {
-    private static final int SAVE_VERSION = 8;
+    private static final int SAVE_VERSION = 9;
+    private static final int CHAMPION_SAVE_VERSION = 9;
     private static final int WAGES_SAVE_VERSION = 8;
     private static final int TRADE_SAVE_VERSION = 7;
     private static final int LOGISTICS_SAVE_VERSION = 6;
@@ -63,7 +64,8 @@ final class KingdomSerializer {
     static KingdomSaveData read(InputStream rawIn) throws IOException {
         DataInputStream in = new DataInputStream(rawIn);
         int version = in.readInt();
-        if (version != SAVE_VERSION && version != TRADE_SAVE_VERSION
+        if (version != SAVE_VERSION && version != WAGES_SAVE_VERSION
+                && version != TRADE_SAVE_VERSION
                 && version != LOGISTICS_SAVE_VERSION
                 && version != DIPLOMATIC_WORKER_SAVE_VERSION
                 && version != WORKER_SAVE_VERSION
@@ -167,6 +169,7 @@ final class KingdomSerializer {
             }
             out.writeInt(valueAtOr(worker, 6, BuildingType.NONE));
             out.writeInt(valueAt(worker, 7));
+            out.writeInt(valueAtOr(worker, 8, WorkerKitten.NOT_CHAMPION));
         }
     }
 
@@ -177,7 +180,8 @@ final class KingdomSerializer {
             throw new IOException("Implausible worker count: " + count);
         }
         data.workers = new ArrayList<>(count);
-        int fields = version >= LOGISTICS_SAVE_VERSION ? 8 : 6;
+        int fields = version >= CHAMPION_SAVE_VERSION ? 9
+                : version >= LOGISTICS_SAVE_VERSION ? 8 : 6;
         for (int i = 0; i < count; i++) {
             int[] worker = new int[fields];
             for (int field = 0; field < fields; field++) {

@@ -42,7 +42,7 @@ public final class KingdomSerializerTest {
                 ResourceType.CATNIP, 4});
         original.workers = new ArrayList<>();
         original.workers.add(new int[]{0, 47, 48, 1, ResourceType.NONE, 0,
-                BuildingType.NONE, 0});
+                BuildingType.NONE, 0, WorkerKitten.ABILITY_PROSPECTOR});
         original.explored = new boolean[WorldMap.SIZE][WorldMap.SIZE];
         original.explored[48][48] = true;
         original.explored[10][20] = true;

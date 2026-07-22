@@ -418,6 +418,9 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
                     worker.facingDirection, worker.isMoving());
             paint.setColor(workerColor(worker.id));
             canvas.drawCircle(22f, -22f, 7f, paint);
+            if (worker.isChampion()) {
+                drawChampionMark(canvas, -24f, -20f);
+            }
             if (worker.state == WorkerKitten.CONSTRUCTING) {
                 drawHammer(canvas, 0f, -50f, 0.9f);
             } else if (worker.carriedAmount > 0) {
@@ -1393,6 +1396,16 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
                             KingdomWorld.HIRE_FISH_COST, KingdomWorld.HIRE_CATNIP_COST), infoX, 330f,
                     18f, 600f, 0xFF74694F, false);
             drawActionButton(canvas, infoX, 430f, text(R.string.hire_kitten), world.canHireWorker());
+            if (world.isTechUnlocked(KingdomWorld.CHAMPION_TECH)) {
+                drawFittedText(canvas, String.format(text(R.string.champion_count),
+                                world.getChampionCount(), KingdomWorld.CHAMPION_CAP)
+                                + "   " + String.format(text(R.string.champion_cost),
+                                KingdomWorld.CHAMPION_CRYSTAL_COST, KingdomWorld.CHAMPION_YARN_COST,
+                                KingdomWorld.CHAMPION_CATNIP_COST),
+                        infoX, 486f, 15f, 600f, 0xFF74694F, false);
+                drawActionButton(canvas, infoX, 528f, text(R.string.craft_champion),
+                        world.canCraftChampion());
+            }
         } else if (world.getOutputResourceId(type.id) != ResourceType.NONE) {
             int outputResource = world.getOutputResourceId(type.id);
             int output = type.outputPerTurn[outputResource];
@@ -1438,6 +1451,31 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
                 (MODAL_LEFT + MODAL_RIGHT) / 2f + 90f, MODAL_BOTTOM - 20f, 0xFFE9DDCB, 0x1E443C2E);
         drawFittedText(canvas, text(R.string.close_button), (MODAL_LEFT + MODAL_RIGHT) / 2f,
                 MODAL_BOTTOM - 32f, 20f, 160f, 0xFF443C2E, true);
+    }
+
+    private void drawChampionMark(Canvas canvas, float cx, float cy) {
+        Path star = new Path();
+        float outer = 9f;
+        float inner = 3.8f;
+        for (int i = 0; i < 10; i++) {
+            float r = (i % 2 == 0) ? outer : inner;
+            double angle = -Math.PI / 2 + i * Math.PI / 5;
+            float x = cx + (float) Math.cos(angle) * r;
+            float y = cy + (float) Math.sin(angle) * r;
+            if (i == 0) {
+                star.moveTo(x, y);
+            } else {
+                star.lineTo(x, y);
+            }
+        }
+        star.close();
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(3.2f);
+        paint.setColor(0xFF3B2E12);
+        canvas.drawPath(star, paint);
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(0xFFFFD34E);
+        canvas.drawPath(star, paint);
     }
 
     private void drawActionButton(Canvas canvas, float cx, float cy, String label, boolean enabled) {
@@ -1941,6 +1979,12 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
             showWorkforceResult(world.hireWorker(), R.string.notify_worker_hired);
             return;
         }
+        if (building.typeId == BuildingType.TOWN_HALL
+                && world.isTechUnlocked(KingdomWorld.CHAMPION_TECH)
+                && isInsidePill(logicalX, logicalY, 735f, 528f, 155f, 28f)) {
+            showChampionResult(world.craftChampion());
+            return;
+        }
         if (world.getOutputResourceId(building.typeId) != ResourceType.NONE
                 && isInsidePill(logicalX, logicalY, 735f, 452f, 155f, 28f)) {
             WorkerKitten assigned = world.getAssignedWorker(building.id);
@@ -1974,6 +2018,35 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
             default:
                 return;
         }
+        enqueueNotification(text(messageRes));
+    }
+
+    private void showChampionResult(int result) {
+        if (result == KingdomWorld.CHAMPION_OK) {
+            // The celebratory notification (with the rolled ability) is queued by onChampionCrafted.
+            performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
+            saveKingdom();
+            invalidate();
+            return;
+        }
+        int messageRes;
+        switch (result) {
+            case KingdomWorld.CHAMPION_NEEDS_TECH:
+                messageRes = R.string.champion_needs_tech;
+                break;
+            case KingdomWorld.CHAMPION_AT_CAP:
+                messageRes = R.string.champion_at_cap;
+                break;
+            case KingdomWorld.CHAMPION_NEEDS_RESOURCES:
+                messageRes = R.string.champion_needs_resources;
+                break;
+            case KingdomWorld.CHAMPION_POPULATION_LIMIT:
+                messageRes = R.string.champion_population_limit;
+                break;
+            default:
+                return;
+        }
+        performHapticFeedback(HapticFeedbackConstants.REJECT);
         enqueueNotification(text(messageRes));
     }
 
@@ -2479,6 +2552,29 @@ final class KittenKingdomsView extends View implements KingdomWorld.Listener {
     @Override
     public void onWorkerHired(int workerId) {
         audio.playPopulationGrew();
+    }
+
+    @Override
+    public void onChampionCrafted(int workerId, int ability) {
+        audio.playPopulationGrew();
+        enqueueNotification(String.format(text(R.string.notify_champion_crafted),
+                text(championAbilityNameRes(ability))));
+    }
+
+    private static int championAbilityNameRes(int ability) {
+        switch (ability) {
+            case WorkerKitten.ABILITY_BOUNTIFUL:
+                return R.string.champion_bountiful;
+            case WorkerKitten.ABILITY_PROSPECTOR:
+                return R.string.champion_prospector;
+            case WorkerKitten.ABILITY_NURTURER:
+                return R.string.champion_nurturer;
+            case WorkerKitten.ABILITY_STURDY_BUILDER:
+                return R.string.champion_sturdy;
+            case WorkerKitten.ABILITY_SWIFT_PAWS:
+            default:
+                return R.string.champion_swift_paws;
+        }
     }
 
     private static int lighten(int color, float amount) {
