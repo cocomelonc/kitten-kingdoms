@@ -44,3 +44,10 @@ The adaptive launcher icon uses the same kitten palette and pixel proportions.
 Interface cards, typography, relationship routes, progress bars, shadows, and
 other UI chrome are drawn at runtime because they must scale cleanly and are
 interface elements rather than world tiles.
+
+## README cover
+
+The 1280x720 README cover is project-specific pixel key art generated from the
+game's current screenshot and original kitten sprite. It is documentation-only
+and is not packaged in the APK. Input provenance and the complete generation
+prompt are recorded in [`art/README.md`](art/README.md).
