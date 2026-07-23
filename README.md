@@ -91,7 +91,11 @@ Back gesture returns to the kingdom exactly as it left it. How to Play is an eig
 swipeable comic made with the game's real tiles, buildings, kittens, resource
 icons, and EN/RU text. It explains the recommended opening, construction,
 delivery, population growth, hiring, recovery when every worker is occupied,
-and the later expansion path
+and the later expansion path. Every caption is laid out to clear its artwork,
+and each page fits both the English and Russian copy without truncation.
+
+| ![How to Play page 5: Fish, Catnip, then growth](art/runtime-guide-growth-1.5.0.png) | ![How to Play page 8: Grow one step at a time](art/runtime-guide-expansion-1.5.0.png) |
+| --- | --- |
 
 The pause card uses the same EN/RU switch as every other screen:
 
