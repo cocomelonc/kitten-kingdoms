@@ -142,7 +142,7 @@
     <string name="guide_recovery_body">If both starting kittens work at two Docks, tap either Dock and choose Release Kitten. That kitten automatically leaves the Dock and builds the oldest waiting site. Build a Catnip Farm while the other Dock keeps fishing.</string>
     <string name="guide_recovery_tip">Releasing a worker never deletes the building or goods already waiting there.</string>
     <string name="guide_expansion_title">Grow one step at a time</string>
-    <string name="guide_expansion_body">After hiring a third worker, add a Lumber Camp, then a Cottage: every housing space also adds storage. Statistics explains stock, queues, buildings, research, workers, and diplomacy. Eight neighbours open distinct manual markets after a trade route is built. Much later, once Crystal Craft is known, the Town Hall can craft rare champion kittens, each with a random helpful ability.</string>
+    <string name="guide_expansion_body">After a third worker, add a Lumber Camp, then a Cottage - housing also adds storage. Statistics explains stock, queues, buildings, research, workers, and diplomacy. Neighbours open manual markets once a trade route is built. Later, the Town Hall can craft rare champion kittens with random abilities.</string>
     <string name="guide_expansion_tip">Markets never trade automatically. Sell surplus, buy what is scarce, and grow at your own pace.</string>
     <string name="guide_tap_to_walk">Tap to walk and reveal</string>
     <string name="guide_one_dock_one_farm">One Dock + one Farm</string>

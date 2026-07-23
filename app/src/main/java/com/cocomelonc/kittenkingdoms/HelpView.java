@@ -308,12 +308,8 @@ final class HelpView extends View {
         drawResourceBubble(canvas, ResourceType.CATNIP, 4, 550f, 218f);
         drawKitten(canvas, 247f, 410f, KittenSprites.DOWN, false, time, 0.85f);
         drawKitten(canvas, 547f, 410f, KittenSprites.DOWN, false, time + 0.5f, 0.85f);
-        paint.setColor(0xFF6FB0D8);
-        canvas.drawCircle(334f, 456f, 11f, paint);
-        paint.setColor(0xFF8FC15C);
-        canvas.drawCircle(368f, 456f, 11f, paint);
-        drawFittedText(canvas, text(R.string.guide_growth_formula), 470f, 464f,
-                18f, 390f, 0xFF5C523F, true);
+        drawFittedText(canvas, text(R.string.guide_growth_formula), 405f, 474f,
+                18f, 544f, 0xFF5C523F, true);
     }
 
     private void drawHiringComic(Canvas canvas, float time) {
@@ -357,13 +353,13 @@ final class HelpView extends View {
             int col = index % 3;
             int row = index / 3;
             float cx = 212f + col * 190f;
-            float cy = 278f + row * 158f;
+            float cy = 258f + row * 146f;
             paint.setColor(0xBFFFF9EA);
-            canvas.drawRoundRect(cx - 70f, cy - 73f, cx + 70f, cy + 60f, 24f, 24f, paint);
+            canvas.drawRoundRect(cx - 70f, cy - 70f, cx + 70f, cy + 56f, 24f, 24f, paint);
             drawBuilding(canvas, buildingIds[index], cx, cy, 1.02f, 255);
         }
-        drawFittedText(canvas, text(R.string.guide_route), 405f, 492f,
-                17f, 520f, 0xFF5C523F, true);
+        drawFittedText(canvas, text(R.string.guide_route), 405f, 496f,
+                17f, 544f, 0xFF5C523F, true);
     }
 
     private void drawNarration(Canvas canvas, String body, String tip) {
